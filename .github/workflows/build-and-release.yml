@@ -12,12 +12,14 @@ permissions:
   contents: write
 
 jobs:
-  build-and-test:
+  build-and-release:
     runs-on: windows-latest
 
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
     - name: Setup .NET SDK
       uses: actions/setup-dotnet@v4
@@ -53,6 +55,52 @@ jobs:
         # Generate SHA256 checksums
         $hash = Get-FileHash release_assets/NUP_Extractor-windows-x64.zip -Algorithm SHA256
         "$($hash.Hash)  NUP_Extractor-windows-x64.zip" | Out-File -Encoding utf8 release_assets/SHA256SUMS.txt
+        Write-Host "Generated SHA-256 Checksum: $($hash.Hash)"
+
+    - name: Determine Release Tag (Auto-Increment)
+      if: github.event_name != 'pull_request'
+      id: tag_version
+      shell: pwsh
+      run: |
+        git fetch --tags --force
+        
+        if ("${{ github.ref }}" -like "refs/tags/v*") {
+            $tag = "${{ github.ref_name }}"
+            Write-Host "Triggered by explicit tag push: $tag"
+        } else {
+            # Find all existing tags matching semantic version vX.Y.Z
+            $tags = git tag -l "v*"
+            $maxMajor = 1
+            $maxMinor = 0
+            $maxPatch = 0
+            
+            foreach ($t in $tags) {
+                if ($t -match '^v?(\d+)\.(\d+)\.(\d+)$') {
+                    $maj = [int]$Matches[1]
+                    $min = [int]$Matches[2]
+                    $pat = [int]$Matches[3]
+                    
+                    if ($maj -gt $maxMajor) {
+                        $maxMajor = $maj
+                        $maxMinor = $min
+                        $maxPatch = $pat
+                    } elseif ($maj -eq $maxMajor -and $min -gt $maxMinor) {
+                        $maxMinor = $min
+                        $maxPatch = $pat
+                    } elseif ($maj -eq $maxMajor -and $min -eq $maxMinor -and $pat -gt $maxPatch) {
+                        $maxPatch = $pat
+                    }
+                }
+            }
+            
+            # Increment patch version automatically (v1.0.0 -> v1.0.1, etc.)
+            $nextPatch = $maxPatch + 1
+            $tag = "v$maxMajor.$maxMinor.$nextPatch"
+            Write-Host "Auto-incremented release tag from latest (v$maxMajor.$maxMinor.$maxPatch) to: $tag"
+        }
+        
+        "RELEASE_TAG=$tag" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+        "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
     - name: Upload Build Artifacts
       uses: actions/upload-artifact@v4
@@ -60,15 +108,15 @@ jobs:
         name: NUP_Extractor-Windows-x64
         path: release_assets/NUP_Extractor-windows-x64.zip
 
-    - name: Create GitHub Release (On Tag Push)
-      if: startsWith(github.ref, 'refs/tags/v')
+    - name: Create GitHub Release
+      if: github.event_name != 'pull_request'
       uses: softprops/action-gh-release@v2
       with:
+        tag_name: ${{ env.RELEASE_TAG }}
+        name: NUP Extractor ${{ env.RELEASE_TAG }}
         files: |
           release_assets/NUP_Extractor-windows-x64.zip
           release_assets/SHA256SUMS.txt
-        name: NUP Extractor ${{ github.ref_name }}
         draft: false
         prerelease: false
         generate_release_notes: true
-

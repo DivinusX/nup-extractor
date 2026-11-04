@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NUP Extractor | High-Performance NX Package Tool for Windows</title>
+    <meta name="description" content="Ultra-fast, native Windows GUI extractor for Nintendo Switch .nup container archives. Zero-copy memory mapping, hardware-accelerated Zstandard decompression, and modern Joy-Con dark UI.">
+    
+    <!-- Open Graph / Meta -->
+    <meta property="og:title" content="NUP Extractor - High-Performance Nintendo Switch Archive Tool">
+    <meta property="og:description" content="Native Windows desktop app to inspect, decompress, and extract .nup archives with SIMD Zstd and zero-copy memory mapping.">
+    <meta property="og:image" content="pictures/main-UI.png">
+    <meta property="og:type" content="website">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="app_icon.ico">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <!-- Sticky Navigation -->
+    <nav class="navbar">
+        <a href="#" class="brand">
+            <div class="joycon-logo">
+                <div class="joycon-left"></div>
+                <div class="joycon-right"></div>
+            </div>
+            <span class="brand-title">NUP <span>EXTRACTOR</span></span>
+        </a>
+
+        <ul class="nav-links">
+            <li><a href="#features" class="nav-link">Features</a></li>
+            <li><a href="#showcase" class="nav-link">UI Showcase</a></li>
+            <li><a href="#architecture" class="nav-link">Architecture</a></li>
+            <li><a href="#download" class="nav-link">Download</a></li>
+            <li>
+                <a href="https://github.com/SPIN0ZAi/nup-extractor" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                    </svg>
+                    GitHub
+                </a>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="hero">
+        <div class="badge-pill">
+            <span class="badge-dot"></span> Production-Ready &bull; Built with Native .NET 10 &amp; WebView2
+        </div>
+        <h1>
+            Ultra-Fast <span class="gradient-text">Nintendo Switch</span><br>
+            Package Extractor
+        </h1>
+        <p>
+            An open-source, high-performance desktop application engineered to inspect, decompress, and extract <code>.nup</code> (NX Package) archives with zero-copy memory mapping, hardware-accelerated Zstandard decompression, and a Joy-Con dark UI.
+        </p>
+
+        <div class="hero-cta">
+            <a href="#download" class="btn btn-primary">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Download v1.0.0 for Windows
+            </a>
+            <a href="https://github.com/SPIN0ZAi/nup-extractor" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                </svg>
+                GitHub Repository
+            </a>
+            <a href="#showcase" class="btn btn-cyan">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                    <line x1="8" y1="21" x2="16" y2="21"></line>
+                    <line x1="12" y1="17" x2="12" y2="21"></line>
+                </svg>
+                Explore Screenshots
+            </a>
+        </div>
+
+        <div class="hero-image-wrapper">
+            <img src="pictures/main-UI.png" alt="NUP Extractor Interface" class="hero-image">
+        </div>
+    </header>
+
+    <!-- Key Features Section -->
+    <section class="section" id="features">
+        <div class="section-header">
+            <div class="section-tag">Performance &amp; Reliability</div>
+            <h2 class="section-title">Engineered for Massive Game Archives</h2>
+            <p class="section-desc">Designed from the ground up to replace clunky CLI scripts and sluggish interpreters with a rock-solid, production-grade native application.</p>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon-box">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                    </svg>
+                </div>
+                <h3 class="feature-title">64-bit Zero-Copy Memory Mapping</h3>
+                <p class="feature-text">
+                    Employs OS kernel-level <code>MemoryMappedFile</code> for instantaneous index parsing and random-access chunk reads without loading multi-gigabyte files into RAM.
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon-box cyan">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                        <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                    </svg>
+                </div>
+                <h3 class="feature-title">Hardware-Accelerated Zstandard</h3>
+                <p class="feature-text">
+                    Direct C# binding via <code>ZstdSharp.Port</code> with SIMD acceleration for multi-gigabyte-per-second decompression throughput on RAW and ZSTD chunks.
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon-box green">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                        <polyline points="9 12 11 14 15 10"></polyline>
+                    </svg>
+                </div>
+                <h3 class="feature-title">True Standalone Executable</h3>
+                <p class="feature-text">
+                    Pure Windows GUI application (<code>WinExe</code>) with zero black command prompt windows, zero Python dependency, and no freezing or antivirus sandboxing latency.
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon-box cyan">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="8" y1="6" x2="21" y2="6"></line>
+                        <line x1="8" y1="12" x2="21" y2="12"></line>
+                        <line x1="8" y1="18" x2="21" y2="18"></line>
+                        <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                        <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                        <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                    </svg>
+                </div>
+                <h3 class="feature-title">Selective &amp; Subtree Extraction</h3>
+                <p class="feature-text">
+                    Extract the full archive or cherry-pick specific game packages (RomFS, ExeFS, DLC, Updates) and individual directories via the interactive visual tree.
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon-box">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                </div>
+                <h3 class="feature-title">Real-Time Extraction Telemetry</h3>
+                <p class="feature-text">
+                    Throttled UI progress dispatching eliminates UI lag, displaying live MB/s transfer speed, elapsed time, ETA countdown, and item counts.
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon-box green">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                </div>
+                <h3 class="feature-title">100% Automated Test Coverage</h3>
+                <p class="feature-text">
+                    15 automated xUnit unit tests verifying Superblock parsing, bad magic rejection, directory traversal guards, decompression, and integrity check routines.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- UI Showcase Section -->
+    <section class="section" id="showcase">
+        <div class="section-header">
+            <div class="section-tag">Visual Walkthrough</div>
+            <h2 class="section-title">Designed with Gamer &amp; Modder Focus</h2>
+            <p class="section-desc">Experience a sleek Joy-Con neon red and cyan aesthetic with clean glassmorphic panels and intuitive file navigation.</p>
+        </div>
+
+        <div class="gallery-grid">
+            <div class="gallery-card">
+                <img src="pictures/extractor-main-UI.png" alt="Container Inspection and Table of Contents">
+                <div class="gallery-info">
+                    <div class="gallery-title">Interactive Container Inspector</div>
+                    <div class="gallery-desc">Inspect game Title IDs, package lists, file hierarchy trees, and search file paths in real time.</div>
+                </div>
+            </div>
+
+            <div class="gallery-card">
+                <img src="pictures/extractor-progress-UI.png" alt="Extraction Progress Modal">
+                <div class="gallery-info">
+                    <div class="gallery-title">Real-Time Progress &amp; Logging</div>
+                    <div class="gallery-desc">Monitor live extraction progress percentage, streaming speed in MB/s, and detailed chronological logs.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Architecture & Specification -->
+    <section class="section" id="architecture">
+        <div class="section-header">
+            <div class="section-tag">Under The Hood</div>
+            <h2 class="section-title">Specification v1 Compliance</h2>
+            <p class="section-desc">Full compliance with the official NX Package Specification (SPEC v1).</p>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <h3 class="feature-title" style="color: var(--switch-blue);">Superblock Layout</h3>
+                <p class="feature-text">
+                    Validates 64-byte binary header with <code>NUP\x01</code> magic, version 1, TOC offset, TOC size, TOC entry count, and archive-level metadata JSON chunk.
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <h3 class="feature-title" style="color: var(--switch-red);">Table of Contents (TOC)</h3>
+                <p class="feature-text">
+                    Binary entry records containing path offset, chunk offset, stored size, original size, and compression flag (<code>0x00=RAW</code>, <code>0x01=ZSTD</code>).
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <h3 class="feature-title" style="color: var(--switch-green);">Zero Console Shell</h3>
+                <p class="feature-text">
+                    Pure Win32 Subsystem execution via Microsoft Edge WebView2 direct asynchronous IPC, eliminating Console QuickEdit pausing and lag.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Download Section -->
+    <section class="section" id="download">
+        <div class="download-card">
+            <div class="badge-pill" style="margin-bottom: 1rem;">
+                <span class="badge-dot"></span> Official Windows Release
+            </div>
+            <h2 class="download-title">Download NUP Extractor</h2>
+            <p class="download-desc">
+                Standalone 64-bit Windows executable. Zero installation required, zero external dependencies. Extract anywhere and launch immediately.
+            </p>
+
+            <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
+                <a href="https://github.com/SPIN0ZAi/nup-extractor/releases/latest" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="padding: 0.9rem 2rem; font-size: 1.05rem;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Download from GitHub Releases
+                </a>
+
+                <a href="https://github.com/SPIN0ZAi/nup-extractor" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" style="padding: 0.9rem 1.8rem; font-size: 1.05rem;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                    </svg>
+                    Source Code
+                </a>
+            </div>
+
+            <div style="margin-top: 2rem;">
+                <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Verify Integrity via PowerShell:</div>
+                <div class="checksum-box">
+                    Get-FileHash .\NUP_Extractor-windows-x64.zip -Algorithm SHA256
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer & Disclaimer -->
+    <footer class="footer">
+        <p style="margin-bottom: 0.75rem;">
+            Released under the <strong>MIT License</strong> &bull; Developed by <a href="https://github.com/SPIN0ZAi" target="_blank" rel="noopener noreferrer">SPIN0ZAi</a>
+        </p>
+        <p style="font-size: 0.78rem; max-width: 700px; margin: 0 auto; line-height: 1.5; color: var(--text-muted);">
+            <strong>Legal Disclaimer:</strong> NUP Extractor is an independent open-source clean-room implementation of the NX Package (NUP) container archive format. This tool does not bypass, decrypt, or circumvent copy protection mechanisms or proprietary cryptographic keys (TitleKeys, ProdKeys). Nintendo and Nintendo Switch are trademarks of Nintendo Co., Ltd.
+        </p>
+    </footer>
+
+</body>
+</html>
