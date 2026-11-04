@@ -18,6 +18,27 @@
 
 ---
 
+## 📸 Screenshots
+
+<p align="center">
+  <img src="pictures/extractor-main-UI.png" alt="NUP Extractor Main UI" width="95%">
+  <br>
+  <em>Container Workspace — Embedded game artwork, metadata, Title/Build IDs, multi-package tabs, interactive file tree, and extraction controls.</em>
+</p>
+
+<br>
+
+<p align="center">
+  <img src="pictures/main-UI.png" alt="Welcome Dropzone" width="48%">
+  &nbsp;&nbsp;
+  <img src="pictures/extractor-progress-UI.png" alt="Extraction Progress" width="48%">
+</p>
+<p align="center">
+  <em>Left: Initial welcome dropzone screen &bull; Right: High-speed extraction modal with live progress & activity log.</em>
+</p>
+
+---
+
 ## ⚡ Overview
 
 **NUP Extractor** is a standalone 64-bit Windows GUI utility built to handle **NX Package (`.nup`)** containers—a modern clean-room specification designed by [a55uka](https://github.com/a55uka/nup) for archiving unencrypted Nintendo Switch (1 and 2) game dumps.
@@ -145,6 +166,10 @@ nup-extractor/
 │   ├── index.html                 # Joy-Con themed responsive UI layout
 │   ├── styles.css                 # Glassmorphic dark styling & animations
 │   └── app.js                     # IPC event handling & reactive UI controller
+├── pictures/                      # Screenshots showcase
+│   ├── main-UI.png                # Dropzone welcome screen
+│   ├── extractor-main-UI.png      # Workspace with loaded game container
+│   └── extractor-progress-UI.png  # Live extraction modal with progress log
 ├── docs/                          # Format specifications
 │   └── SPEC.md                    # Official NUP container format specification
 ├── .github/workflows/             # GitHub Actions CI/CD
