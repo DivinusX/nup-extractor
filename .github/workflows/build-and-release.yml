@@ -1,0 +1,73 @@
+name: Build & Release NUP Extractor
+
+on:
+  push:
+    branches: [ "main" ]
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Restore Dependencies
+      run: dotnet restore NupExtractor.slnx
+
+    - name: Run Automated Test Suite (15 Tests)
+      run: dotnet test NupExtractor.slnx -c Release --no-restore --verbosity normal
+
+    - name: Publish Standalone Executable
+      run: |
+        dotnet publish src_native/NupExtractorApp.csproj `
+          -c Release `
+          -r win-x64 `
+          --self-contained `
+          -p:PublishSingleFile=true `
+          -p:IncludeNativeLibrariesForSelfExtract=true `
+          -p:EnableCompressionInSingleFile=true `
+          -o dist_release
+
+    - name: Package Release Assets
+      shell: pwsh
+      run: |
+        New-Item -ItemType Directory -Force release_assets
+        Copy-Item dist_release/NupExtractorApp.exe release_assets/NUP_Extractor.exe
+        Copy-Item README.md release_assets/
+        Copy-Item LICENSE release_assets/
+        Compress-Archive -Path release_assets/* -DestinationPath release_assets/NUP_Extractor-windows-x64.zip
+        
+        # Generate SHA256 checksums
+        $hash = Get-FileHash release_assets/NUP_Extractor-windows-x64.zip -Algorithm SHA256
+        "$($hash.Hash)  NUP_Extractor-windows-x64.zip" | Out-File -Encoding utf8 release_assets/SHA256SUMS.txt
+
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: NUP_Extractor-Windows-x64
+        path: release_assets/NUP_Extractor-windows-x64.zip
+
+    - name: Create GitHub Release (On Tag Push)
+      if: startsWith(github.ref, 'refs/tags/v')
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          release_assets/NUP_Extractor-windows-x64.zip
+          release_assets/SHA256SUMS.txt
+        name: NUP Extractor ${{ github.ref_name }}
+        draft: false
+        prerelease: false
+        generate_release_notes: true

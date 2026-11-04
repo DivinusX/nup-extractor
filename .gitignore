@@ -1,0 +1,38 @@
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build and Output Folders
+bin/
+obj/
+dist/
+dist_native/
+release/
+*.exe
+
+# Visual Studio / IDE
+.vs/
+.idea/
+.vscode/
+
+# Game Containers (Do NOT commit commercial game dumps)
+*.nup
+!sample_game.nup
+*_extracted/
+extracted/
+test_*/
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.spec
+
+# OS Generated
+Thumbs.db
+Desktop.ini
+.DS_Store
+*.tmp

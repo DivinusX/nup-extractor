@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NUP Extractor · Switch Clean-Room Container Utility</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="app-header">
+        <div class="brand">
+            <div class="joycon-logo">
+                <div class="joycon-left"></div>
+                <div class="joycon-right"></div>
+            </div>
+            <div class="brand-text">
+                <h1><span>NUP</span> EXTRACTOR</h1>
+            </div>
+            <span class="badge-tag">Switch 1 & 2 Container</span>
+        </div>
+
+        <div class="header-actions">
+            <button id="btn-load-sample" class="btn btn-secondary" style="display: none;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                Load Sample
+            </button>
+            <button id="btn-open-file" class="btn btn-primary btn-glow">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                Open .NUP Container
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="main-content">
+        
+        <!-- Welcome Dropzone (Hidden when container is loaded) -->
+        <section id="dropzone-view" class="dropzone-container">
+            <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                <rect x="3" y="3" width="18" height="18" rx="4" stroke-dasharray="4 4"></rect>
+                <path d="M12 8v8m-4-4l4-4 4 4"></path>
+            </svg>
+            <h2 class="dropzone-title">Drop your Nintendo Switch .NUP container here</h2>
+            <p class="dropzone-subtitle">
+                Inspect package hierarchies, verify TOC integrity, and extract ExeFS and RomFS game dumps. Supports both Switch 1 & Switch 2 games.
+            </p>
+            <div class="dropzone-actions">
+                <button id="btn-dropzone-browse" class="btn btn-primary btn-glow">
+                    Browse Computer (.nup)
+                </button>
+                <button id="btn-dropzone-sample" class="btn btn-secondary">
+                    Try Sample Dump
+                </button>
+            </div>
+        </section>
+
+        <!-- Container Workspace (Shown after loading .nup) -->
+        <section id="workspace-view" style="display: none;">
+            
+            <!-- Game Hero Summary -->
+            <div class="game-hero-card">
+                <div class="game-icon-box">
+                    <img id="game-icon" class="game-icon-img" src="" alt="Game Icon" style="display: none;">
+                    <div id="game-icon-fallback" style="text-align: center; color: var(--text-muted);">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <rect x="2" y="6" width="20" height="12" rx="2"></rect>
+                            <circle cx="7" cy="12" r="2"></circle>
+                            <circle cx="17" cy="12" r="2"></circle>
+                        </svg>
+                        <div style="font-size: 0.7rem; font-weight: 700; margin-top: 4px;">NO ICON</div>
+                    </div>
+                </div>
+
+                <div class="game-details">
+                    <div>
+                        <div class="game-title-row">
+                            <h2 id="game-title" class="game-title">Game Title</h2>
+                            <span id="badge-version" class="badge-tag" style="background: rgba(0, 212, 255, 0.15); color: var(--switch-blue);">v1.0.0</span>
+                        </div>
+                        <div class="game-meta-row">
+                            <span id="game-publisher" class="publisher-tag">Publisher Name</span>
+                            <span>•</span>
+                            <span id="game-filename" style="font-family: var(--font-mono); font-size: 0.85rem;">file.nup</span>
+                            <span>•</span>
+                            <span id="game-filesize" style="font-weight: 600; color: var(--switch-green);">0 B</span>
+                        </div>
+                    </div>
+
+                    <!-- Specs Badges Grid -->
+                    <div class="specs-grid">
+                        <div class="spec-item">
+                            <div class="spec-label">Title ID</div>
+                            <div class="spec-value">
+                                <span id="spec-title-id">0100000000000000</span>
+                                <button class="copy-btn" onclick="copyText('spec-title-id')" title="Copy Title ID">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="spec-item">
+                            <div class="spec-label">Build ID (NSO ModuleId)</div>
+                            <div class="spec-value">
+                                <span id="spec-build-id" style="font-size: 0.75rem; text-overflow: ellipsis; overflow: hidden; max-width: 150px;">-</span>
+                                <button class="copy-btn" onclick="copyText('spec-build-id')" title="Copy Build ID">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="spec-item">
+                            <div class="spec-label">Packages & Content</div>
+                            <div class="spec-value">
+                                <span id="spec-pkg-count">1 package</span>
+                            </div>
+                        </div>
+
+                        <div class="spec-item">
+                            <div class="spec-label">Zstd Compression</div>
+                            <div class="spec-value">
+                                <span id="spec-compression">0%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 0.75rem;">
+                        <button id="btn-quick-extract-all" class="btn btn-primary btn-glow">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            Extract Everything
+                        </button>
+                        <button id="btn-verify-container" class="btn btn-secondary">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                            Verify Integrity
+                        </button>
+                        <button id="btn-close-container" class="btn btn-secondary">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Workspace Columns -->
+            <div class="workspace-grid">
+                
+                <!-- Left: Package Tabs & Tree Explorer -->
+                <div class="packages-panel">
+                    <div class="panel-header">
+                        <span style="font-weight: 700; font-size: 0.95rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                            Container Hierarchy
+                        </span>
+                        <span id="current-pkg-meta" style="font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono);"></span>
+                    </div>
+
+                    <!-- Package Tabs -->
+                    <div id="tabs-container" class="tabs-nav">
+                        <!-- Injected dynamically -->
+                    </div>
+
+                    <!-- Search Box -->
+                    <div class="search-box">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--text-muted);"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        <input id="tree-search" type="text" class="search-input" placeholder="Filter files (e.g. main, .npdm, config)...">
+                        <button id="btn-clear-search" class="copy-btn" style="display: none;" title="Clear Search">✕</button>
+                    </div>
+
+                    <!-- Interactive Tree -->
+                    <div id="tree-view" class="tree-container">
+                        <!-- Injected dynamically -->
+                    </div>
+                </div>
+
+                <!-- Right: Extraction Control Panel -->
+                <div class="extract-panel">
+                    <h3 class="extract-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--switch-red);"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        Extraction Settings
+                    </h3>
+
+                    <div class="field-group">
+                        <label class="field-label">Destination Directory</label>
+                        <div class="input-with-button">
+                            <input id="dest-dir-input" type="text" class="text-input" placeholder="Select destination...">
+                            <button id="btn-browse-dest" class="btn btn-secondary" title="Choose folder via Explorer">
+                                Browse...
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="field-group">
+                        <label class="field-label">Extraction Scope</label>
+                        <div class="mode-options">
+                            <label class="mode-radio">
+                                <input type="radio" name="extract-mode" value="all" checked>
+                                <div>
+                                    <div class="mode-info-title">⚡ Full Game Dump (All Packages)</div>
+                                    <div class="mode-info-desc">Reconstructs standard folders: base/, updates/, and dlc/</div>
+                                </div>
+                            </label>
+
+                            <label class="mode-radio">
+                                <input type="radio" name="extract-mode" value="package">
+                                <div>
+                                    <div class="mode-info-title">📦 Selected Package Only</div>
+                                    <div class="mode-info-desc">Extracts only the currently selected package tab</div>
+                                </div>
+                            </label>
+
+                            <label class="mode-radio">
+                                <input type="radio" name="extract-mode" value="subtree">
+                                <div>
+                                    <div class="mode-info-title">📁 Subtree / Subfolder Only</div>
+                                    <div class="mode-info-desc">Extracts only exefs, romfs, or a selected folder</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="field-group" id="subtree-selector-group" style="display: none;">
+                        <label class="field-label">Target Subtree</label>
+                        <select id="subtree-select" class="text-input" style="font-family: var(--font-mono); font-size: 0.8rem;">
+                            <option value="romfs">romfs/</option>
+                            <option value="exefs">exefs/</option>
+                        </select>
+                    </div>
+
+                    <div class="field-group">
+                        <label class="checkbox-label">
+                            <input id="check-open-explorer" type="checkbox" checked>
+                            Open output folder in Explorer when done
+                        </label>
+                        <label class="checkbox-label" style="margin-top: 4px;">
+                            <input type="checkbox" checked disabled>
+                            Decompress Zstandard (zstd) extents
+                        </label>
+                    </div>
+
+                    <button id="btn-start-extraction" class="btn btn-primary btn-glow" style="width: 100%; justify-content: center; padding: 0.85rem; font-size: 1rem; margin-top: 0.5rem;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        Start Extraction
+                    </button>
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Extraction Progress Modal -->
+    <div id="extract-modal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="progress-header">
+                <h3 id="extract-modal-title" style="font-size: 1.15rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
+                    <span class="joycon-left" style="height: 18px; width: 8px;"></span>
+                    Extracting Game Files...
+                </h3>
+                <span id="extract-modal-pct" style="font-family: var(--font-mono); font-weight: 700; color: var(--switch-blue);">0%</span>
+            </div>
+
+            <div class="progress-bar-container">
+                <div id="extract-progress-bar" class="progress-fill"></div>
+            </div>
+
+            <div class="progress-stats">
+                <span id="extract-stats-files">0 / 0 files</span>
+                <span id="extract-stats-bytes">0 B / 0 B</span>
+            </div>
+
+            <div id="extract-current-file" style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                Preparing extraction...
+            </div>
+
+            <div id="extract-log-box" class="progress-log-box">
+                <!-- Activity logs appended here -->
+            </div>
+
+            <div id="extract-modal-footer" style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 0.5rem;">
+                <button id="btn-modal-open-folder" class="btn btn-cyan" style="display: none;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                    Open in File Explorer
+                </button>
+                <button id="btn-modal-close" class="btn btn-secondary" style="display: none;">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Verification Modal -->
+    <div id="verify-modal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="progress-header">
+                <h3 style="font-size: 1.15rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--switch-green);"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                    Verifying Container Integrity
+                </h3>
+                <span id="verify-modal-pct" style="font-family: var(--font-mono); font-weight: 700; color: var(--switch-green);">0%</span>
+            </div>
+
+            <div class="progress-bar-container">
+                <div id="verify-progress-bar" class="progress-fill" style="background: linear-gradient(90deg, #10b981, #00d4ff);"></div>
+            </div>
+
+            <div id="verify-status-text" style="font-size: 0.85rem; color: var(--text-secondary);">
+                Validating Superblock, TOC SHA-256 and checking file hashes...
+            </div>
+
+            <div id="verify-result-box" class="progress-log-box" style="height: 200px;">
+                <!-- Verification results -->
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+                <button id="btn-verify-modal-close" class="btn btn-secondary">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <span id="toast-message">Copied to clipboard</span>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
+
