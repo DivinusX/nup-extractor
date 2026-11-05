@@ -10,6 +10,8 @@ bin/
 obj/
 dist/
 dist_native/
+dist_release/
+publish_bin/
 release/
 *.exe
 

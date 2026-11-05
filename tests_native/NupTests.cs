@@ -248,7 +248,7 @@ public class NupTests
     public void Test_Integrity_Verification()
     {
         VerifyProgressInfo? finalResult = null;
-        var progress = new Progress<VerifyProgressInfo>(p =>
+        var progress = new SyncProgress<VerifyProgressInfo>(p =>
         {
             if (p.Status == "done") finalResult = p;
         });
@@ -315,5 +315,49 @@ public class NupTests
     public void Test_GetDirChildren_OutOfBoundsThrows()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => NupEngine.GetDirChildren(SampleNupPath, 999999));
+    }
+
+    [Fact]
+    public void Test_OpenReadFileStream_StreamingDecompression()
+    {
+        using var reader = new NupReader(SampleNupPath);
+        Assert.True(reader.Files.Count > 0);
+
+        for (int i = 0; i < reader.Files.Count; i++)
+        {
+            var f = reader.Files[i];
+            using var stream = reader.OpenReadFileStream(i);
+            Assert.NotNull(stream);
+
+            using var ms = new MemoryStream();
+            stream.CopyTo(ms);
+            Assert.Equal((long)f.Size, ms.Length);
+
+            byte[] hash = SHA256.HashData(ms.ToArray());
+            Assert.Equal(Convert.ToHexString(f.Sha256), Convert.ToHexString(hash));
+        }
+    }
+
+    [Fact]
+    public void Test_DeepVerify_UsesStreamingWithoutMemorySpikes()
+    {
+        VerifyProgressInfo? finalResult = null;
+        var syncProgress = new SyncProgress<VerifyProgressInfo>(p =>
+        {
+            if (p.Status == "done") finalResult = p;
+        });
+
+        NupEngine.Verify(SampleNupPath, deep: true, syncProgress, CancellationToken.None);
+
+        Assert.NotNull(finalResult);
+        Assert.True(finalResult.Valid);
+        Assert.Empty(finalResult.Problems);
+    }
+
+    private class SyncProgress<T> : IProgress<T>
+    {
+        private readonly Action<T> _handler;
+        public SyncProgress(Action<T> handler) => _handler = handler;
+        public void Report(T value) => _handler(value);
     }
 }

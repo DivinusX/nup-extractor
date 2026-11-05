@@ -268,6 +268,30 @@ public unsafe class NupReader : IDisposable
         return meta;
     }
 
+    public unsafe Stream OpenReadFileStream(int fileIndex)
+    {
+        if (fileIndex < 0 || fileIndex >= Files.Count)
+            throw new ArgumentOutOfRangeException(nameof(fileIndex));
+
+        var f = Files[fileIndex];
+        if (f.ExtentOffset + f.ExtentSize > (ulong)_fileSize)
+            throw new InvalidDataException($"Extent out of bounds for file {f.Name}");
+
+        var memStream = new UnmanagedMemoryStream(_ptr + (long)f.ExtentOffset, (long)f.ExtentSize, (long)f.ExtentSize, FileAccess.Read);
+
+        if (f.Codec == NupConstants.CodecRaw)
+        {
+            return memStream;
+        }
+        else if (f.Codec == NupConstants.CodecZstd)
+        {
+            return new DecompressionStream(memStream);
+        }
+
+        memStream.Dispose();
+        throw new NotSupportedException($"Unknown codec: {f.Codec}");
+    }
+
     public unsafe byte[] ReadFileData(int fileIndex)
     {
         if (fileIndex < 0 || fileIndex >= Files.Count)
@@ -276,26 +300,23 @@ public unsafe class NupReader : IDisposable
         var f = Files[fileIndex];
         if (f.Size == 0) return Array.Empty<byte>();
 
-        if (f.ExtentOffset + f.ExtentSize > (ulong)_fileSize)
-            throw new InvalidDataException($"Extent out of bounds for file {f.Name}");
+        if (f.Size > 0x7FFFFFC7) // Array.MaxLength (~2GB)
+            throw new InvalidOperationException($"File '{f.Name}' is {f.Size} bytes and exceeds managed byte array size limits (>2GB). Use OpenReadFileStream or ExtractFileToStream instead.");
 
-        ReadOnlySpan<byte> extent = new ReadOnlySpan<byte>(_ptr + (long)f.ExtentOffset, (int)f.ExtentSize);
-
-        if (f.Codec == NupConstants.CodecRaw)
+        using var srcStream = OpenReadFileStream(fileIndex);
+        byte[] output = new byte[f.Size];
+        int totalRead = 0;
+        while (totalRead < (int)f.Size)
         {
-            return extent.ToArray();
-        }
-        else if (f.Codec == NupConstants.CodecZstd)
-        {
-            using var decompressor = new Decompressor();
-            byte[] output = new byte[f.Size];
-            int written = decompressor.Unwrap(extent, output);
-            if ((ulong)written != f.Size)
-                throw new InvalidDataException($"Zstd size mismatch for {f.Name}: {written} != {f.Size}");
-            return output;
+            int read = srcStream.Read(output, totalRead, (int)f.Size - totalRead);
+            if (read == 0) break;
+            totalRead += read;
         }
 
-        throw new NotSupportedException($"Unknown codec: {f.Codec}");
+        if ((ulong)totalRead != f.Size)
+            throw new InvalidDataException($"Size mismatch for {f.Name}: read {totalRead} bytes, expected {f.Size}");
+
+        return output;
     }
 
     public unsafe void ExtractFileToStream(int fileIndex, Stream destStream)
@@ -306,20 +327,23 @@ public unsafe class NupReader : IDisposable
         var f = Files[fileIndex];
         if (f.Size == 0) return;
 
-        ReadOnlySpan<byte> extent = new ReadOnlySpan<byte>(_ptr + (long)f.ExtentOffset, (int)f.ExtentSize);
+        if (f.ExtentOffset + f.ExtentSize > (ulong)_fileSize)
+            throw new InvalidDataException($"Extent out of bounds for file {f.Name}");
+
+        using var memStream = new UnmanagedMemoryStream(_ptr + (long)f.ExtentOffset, (long)f.ExtentSize, (long)f.ExtentSize, FileAccess.Read);
 
         if (f.Codec == NupConstants.CodecRaw)
         {
-            destStream.Write(extent);
+            memStream.CopyTo(destStream, 131072);
         }
         else if (f.Codec == NupConstants.CodecZstd)
         {
-            using var decompressor = new Decompressor();
-            byte[] output = new byte[f.Size];
-            int written = decompressor.Unwrap(extent, output);
-            if ((ulong)written != f.Size)
-                throw new InvalidDataException($"Zstd size mismatch for {f.Name}: {written} != {f.Size}");
-            destStream.Write(output, 0, written);
+            using var zstdStream = new DecompressionStream(memStream);
+            zstdStream.CopyTo(destStream, 131072);
+        }
+        else
+        {
+            throw new NotSupportedException($"Unknown codec: {f.Codec}");
         }
     }
 

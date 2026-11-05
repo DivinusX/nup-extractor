@@ -426,14 +426,22 @@ public static class NupEngine
             ct.ThrowIfCancellationRequested();
 
             var (fi, relPath) = filesToExtract[i];
-            string fullPath = Path.Combine(cleanDestDir, relPath);
+            string safeRelPath = SanitizeRelativePath(relPath);
+            string fullPath = Path.Combine(cleanDestDir, safeRelPath);
             string? dir = Path.GetDirectoryName(fullPath);
             if (!string.IsNullOrEmpty(dir))
                 Directory.CreateDirectory(dir);
 
-            using (var fs = new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.None, 131072)) // 128 KB buffer
+            try
             {
-                reader.ExtractFileToStream(fi, fs);
+                using (var fs = new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.None, 131072)) // 128 KB buffer
+                {
+                    reader.ExtractFileToStream(fi, fs);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"Failed to extract '{relPath}' ({FormatBytes(reader.Files[fi].Size)}): {ex.Message}", ex);
             }
 
             ulong fSize = reader.Files[fi].Size;
@@ -516,6 +524,22 @@ public static class NupEngine
         }
     }
 
+    private static string SanitizeRelativePath(string relPath)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        var parts = relPath.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
+        for (int i = 0; i < parts.Length; i++)
+        {
+            var sb = new StringBuilder(parts[i].Length);
+            foreach (char c in parts[i])
+            {
+                sb.Append(Array.IndexOf(invalid, c) >= 0 ? '_' : c);
+            }
+            parts[i] = sb.ToString();
+        }
+        return Path.Combine(parts);
+    }
+
     public static void Verify(string nupPath, bool deep, IProgress<VerifyProgressInfo> progress, CancellationToken ct)
     {
         var problems = new List<string>();
@@ -536,8 +560,8 @@ public static class NupEngine
 
                 try
                 {
-                    byte[] data = reader.ReadFileData(i);
-                    byte[] hash = SHA256.HashData(data);
+                    using var stream = reader.OpenReadFileStream(i);
+                    byte[] hash = SHA256.HashData(stream);
                     if (!hash.AsSpan().SequenceEqual(f.Sha256))
                     {
                         problems.Add($"File #{i} ({f.Name}): SHA-256 hash mismatch");
