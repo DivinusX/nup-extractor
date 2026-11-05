@@ -163,6 +163,15 @@ The solution includes an extensive **xUnit** automated regression test suite (`t
 
 ---
 
+## 👥 Engineering & Contributing
+
+To maintain high engineering standards, all development follows a Kanban board and Git Flow:
+- **Git Flow Guide**: See [docs/WORKFLOW.md](docs/WORKFLOW.md) for branch naming, PR checklist, and release cycles.
+- **Kanban Board**: Tasks and bugs are tracked via [GitHub Projects](https://github.com/SPIN0ZAi/nup-extractor/projects).
+- **Automated CI**: Pull Requests targeting the `develop` branch are automatically built, packaged, and verified across all 19 unit tests before merging.
+
+---
+
 ## 🏛️ Architecture
 
 ```

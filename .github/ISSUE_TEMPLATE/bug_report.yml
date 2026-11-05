@@ -1,0 +1,60 @@
+name: 🐛 Bug Report
+description: Report an issue, extraction failure, or unexpected behavior
+title: "[BUG]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug report! Please provide as much detail as possible to help reproduce and resolve it quickly.
+
+  - type: input
+    id: game_name
+    attributes:
+      label: Game / Container Name
+      description: Name of the game or container dump being extracted (e.g. Pokémon Pokopia, Sample NX Adventure).
+      placeholder: "e.g., Pokémon Pokopia"
+    validations:
+      required: false
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the Bug
+      description: A clear and concise description of what happened and what you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: error_log
+    attributes:
+      label: Error Log / Terminal Output
+      description: Paste any error messages from the UI progress log or console.
+      render: text
+    validations:
+      required: false
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Step-by-step instructions on how to trigger the bug.
+      value: |
+        1. Open NUP Extractor
+        2. Drag and drop file '...'
+        3. Click 'Extract All'
+        4. See error '...'
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os_version
+    attributes:
+      label: Operating System
+      options:
+        - Windows 11 (x64)
+        - Windows 10 (x64)
+        - Other
+    validations:
+      required: true
+
