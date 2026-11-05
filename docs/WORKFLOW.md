@@ -119,3 +119,4 @@ When `develop` has accumulated tested features and you are ready to publish a ne
    - Packages `NUP_Extractor-windows-x64.zip` and `SHA256SUMS.txt`.
    - Publishes the new release on GitHub Releases.
    - Activates the in-app auto-updater for all existing users!
+

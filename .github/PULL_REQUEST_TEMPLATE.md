@@ -18,3 +18,4 @@ Closes #
 - [ ] Standalone release packaging succeeds (`dotnet publish src_native/NupExtractorApp.csproj ...`).
 - [ ] CI Verification workflow passes with green checks.
 - [ ] Ready for review and merge into the `develop` branch.
+

@@ -24,39 +24,7 @@ jobs:
       with:
         dotnet-version: '10.0.x'
 
-    - name: Restore Dependencies
-      run: dotnet restore NupExtractor.slnx
-
-    - name: Run Automated Test Suite (19 Tests)
-      run: dotnet test NupExtractor.slnx -c Release --no-restore --verbosity normal
-
-    - name: Publish Standalone Executable
-      run: |
-        dotnet publish src_native/NupExtractorApp.csproj `
-          -c Release `
-          -r win-x64 `
-          --self-contained `
-          -p:PublishSingleFile=true `
-          -p:IncludeNativeLibrariesForSelfExtract=true `
-          -p:EnableCompressionInSingleFile=true `
-          -o dist_release
-
-    - name: Package Release Assets
-      shell: pwsh
-      run: |
-        New-Item -ItemType Directory -Force release_assets
-        Copy-Item dist_release/NupExtractorApp.exe release_assets/NUP_Extractor.exe
-        Copy-Item README.md release_assets/
-        Copy-Item LICENSE release_assets/
-        Compress-Archive -Path release_assets/* -DestinationPath release_assets/NUP_Extractor-windows-x64.zip
-        
-        # Generate SHA256 checksums
-        $hash = Get-FileHash release_assets/NUP_Extractor-windows-x64.zip -Algorithm SHA256
-        "$($hash.Hash)  NUP_Extractor-windows-x64.zip" | Out-File -Encoding utf8 release_assets/SHA256SUMS.txt
-        Write-Host "Generated SHA-256 Checksum: $($hash.Hash)"
-
     - name: Determine Release Tag (Auto-Increment)
-      if: github.event_name != 'pull_request'
       id: tag_version
       shell: pwsh
       run: |
@@ -64,6 +32,7 @@ jobs:
         
         if ("${{ github.ref }}" -like "refs/tags/v*") {
             $tag = "${{ github.ref_name }}"
+            $rawVer = $tag.TrimStart('v')
             Write-Host "Triggered by explicit tag push: $tag"
         } else {
             # Find all existing tags matching semantic version vX.Y.Z
@@ -91,14 +60,51 @@ jobs:
                 }
             }
             
-            # Increment patch version automatically (v1.0.0 -> v1.0.1, etc.)
+            # Increment patch version automatically (v1.0.6 -> v1.0.7, etc.)
             $nextPatch = $maxPatch + 1
             $tag = "v$maxMajor.$maxMinor.$nextPatch"
-            Write-Host "Auto-incremented release tag from latest (v$maxMajor.$maxMinor.$maxPatch) to: $tag"
+            $rawVer = "$maxMajor.$maxMinor.$nextPatch"
+            Write-Host "Auto-incremented release tag from latest (v$maxMajor.$maxMinor.$maxPatch) to: $tag (Version: $rawVer)"
         }
         
         "RELEASE_TAG=$tag" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+        "RELEASE_VERSION=$rawVer" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
         "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+    - name: Restore Dependencies
+      run: dotnet restore NupExtractor.slnx
+
+    - name: Run Automated Test Suite (19 Tests)
+      run: dotnet test NupExtractor.slnx -c Release --no-restore --verbosity normal
+
+    - name: Publish Standalone Executable
+      run: |
+        dotnet publish src_native/NupExtractorApp.csproj `
+          -c Release `
+          -r win-x64 `
+          --self-contained `
+          -p:PublishSingleFile=true `
+          -p:IncludeNativeLibrariesForSelfExtract=true `
+          -p:EnableCompressionInSingleFile=true `
+          -p:Version=${{ env.RELEASE_VERSION }} `
+          -p:AssemblyVersion=${{ env.RELEASE_VERSION }}.0 `
+          -p:FileVersion=${{ env.RELEASE_VERSION }}.0 `
+          -p:InformationalVersion=${{ env.RELEASE_VERSION }} `
+          -o dist_release
+
+    - name: Package Release Assets
+      shell: pwsh
+      run: |
+        New-Item -ItemType Directory -Force release_assets
+        Copy-Item dist_release/NupExtractorApp.exe release_assets/NUP_Extractor.exe
+        Copy-Item README.md release_assets/
+        Copy-Item LICENSE release_assets/
+        Compress-Archive -Path release_assets/* -DestinationPath release_assets/NUP_Extractor-windows-x64.zip
+        
+        # Generate SHA256 checksums
+        $hash = Get-FileHash release_assets/NUP_Extractor-windows-x64.zip -Algorithm SHA256
+        "$($hash.Hash)  NUP_Extractor-windows-x64.zip" | Out-File -Encoding utf8 release_assets/SHA256SUMS.txt
+        Write-Host "Generated SHA-256 Checksum: $($hash.Hash)"
 
     - name: Upload Build Artifacts
       uses: actions/upload-artifact@v4
@@ -107,7 +113,6 @@ jobs:
         path: release_assets/NUP_Extractor-windows-x64.zip
 
     - name: Create GitHub Release
-      if: github.event_name != 'pull_request'
       uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ env.RELEASE_TAG }}

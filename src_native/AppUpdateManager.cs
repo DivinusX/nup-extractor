@@ -4,6 +4,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -37,9 +38,33 @@ public class UpdateProgressInfo
 
 public static class AppUpdateManager
 {
-    public const string CurrentVersion = "1.0.5";
+    public static string CurrentVersion { get; } = ResolveVersion();
     public const string GitHubRepo = "SPIN0ZAi/nup-extractor";
     private static readonly HttpClient _httpClient = new HttpClient();
+
+    private static string ResolveVersion()
+    {
+        try
+        {
+            var asm = typeof(AppUpdateManager).Assembly;
+            var infoVer = asm.GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+            if (!string.IsNullOrWhiteSpace(infoVer))
+            {
+                int plusIdx = infoVer.IndexOf('+');
+                if (plusIdx > 0) infoVer = infoVer[..plusIdx];
+                string clean = infoVer.Trim().TrimStart('v', 'V');
+                if (!string.IsNullOrEmpty(clean) && clean != "1.0.0")
+                    return clean;
+            }
+
+            var ver = asm.GetName().Version;
+            if (ver != null && ver.Major > 0 && !(ver.Major == 1 && ver.Minor == 0 && ver.Build == 0))
+                return $"{ver.Major}.{ver.Minor}.{ver.Build}";
+        }
+        catch { }
+
+        return "1.0.7";
+    }
 
     static AppUpdateManager()
     {
@@ -253,6 +278,7 @@ public static class AppUpdateManager
 
             int pid = Environment.ProcessId;
             string updaterCmdPath = Path.Combine(tempBase, "updater.cmd");
+            string oldExePath = currentExePath + ".old";
 
             var scriptBuilder = new StringBuilder();
             scriptBuilder.AppendLine("@echo off");
@@ -260,19 +286,25 @@ public static class AppUpdateManager
             scriptBuilder.AppendLine($"set \"PID={pid}\"");
             scriptBuilder.AppendLine($"set \"NEW_EXE={newExePath}\"");
             scriptBuilder.AppendLine($"set \"TARGET_EXE={currentExePath}\"");
+            scriptBuilder.AppendLine($"set \"OLD_EXE={oldExePath}\"");
             scriptBuilder.AppendLine($"set \"TEMP_DIR={tempBase}\"");
             scriptBuilder.AppendLine();
-            scriptBuilder.AppendLine(":: Wait for main application process to exit");
+            scriptBuilder.AppendLine(":: 1. Wait for the main application process to terminate");
             scriptBuilder.AppendLine("set /a attempts=0");
             scriptBuilder.AppendLine(":wait_loop");
             scriptBuilder.AppendLine("set /a attempts+=1");
-            scriptBuilder.AppendLine("if %attempts% geq 40 goto do_copy");
+            scriptBuilder.AppendLine("if %attempts% geq 30 goto do_copy");
             scriptBuilder.AppendLine("timeout /t 1 /nobreak >nul");
             scriptBuilder.AppendLine("tasklist /fi \"PID eq %PID%\" 2>nul | findstr /i \"%PID%\" >nul");
             scriptBuilder.AppendLine("if not errorlevel 1 goto wait_loop");
             scriptBuilder.AppendLine();
             scriptBuilder.AppendLine(":do_copy");
             scriptBuilder.AppendLine("timeout /t 1 /nobreak >nul");
+            scriptBuilder.AppendLine(":: 2. Atomic rename of existing exe (allows instant release of file lock)");
+            scriptBuilder.AppendLine("del /f /q \"%OLD_EXE%\" >nul 2>&1");
+            scriptBuilder.AppendLine("move /y \"%TARGET_EXE%\" \"%OLD_EXE%\" >nul 2>&1");
+            scriptBuilder.AppendLine();
+            scriptBuilder.AppendLine(":: 3. Copy new updated executable into target location");
             scriptBuilder.AppendLine("set /a copy_attempts=0");
             scriptBuilder.AppendLine(":copy_loop");
             scriptBuilder.AppendLine("set /a copy_attempts+=1");
@@ -283,7 +315,11 @@ public static class AppUpdateManager
             scriptBuilder.AppendLine("    goto copy_loop");
             scriptBuilder.AppendLine(")");
             scriptBuilder.AppendLine();
+            scriptBuilder.AppendLine(":: 4. Clean up old renamed binary");
+            scriptBuilder.AppendLine("del /f /q \"%OLD_EXE%\" >nul 2>&1");
+            scriptBuilder.AppendLine();
             scriptBuilder.AppendLine(":finish");
+            scriptBuilder.AppendLine(":: 5. Launch the newly updated executable");
             scriptBuilder.AppendLine("start \"\" \"%TARGET_EXE%\"");
             scriptBuilder.AppendLine("timeout /t 2 /nobreak >nul");
             scriptBuilder.AppendLine("rd /s /q \"%TEMP_DIR%\" >nul 2>&1");
@@ -294,7 +330,7 @@ public static class AppUpdateManager
             var psi = new ProcessStartInfo
             {
                 FileName = "cmd.exe",
-                Arguments = $"/c \"\"{updaterCmdPath}\"\"",
+                Arguments = $"/c \"{updaterCmdPath}\"",
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 WindowStyle = ProcessWindowStyle.Hidden

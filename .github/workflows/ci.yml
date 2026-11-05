@@ -44,3 +44,4 @@ jobs:
           -p:IncludeNativeLibrariesForSelfExtract=true `
           -p:EnableCompressionInSingleFile=true `
           -o dist_verify
+
