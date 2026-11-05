@@ -12,7 +12,14 @@
     <SelfContained>true</SelfContained>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
+    <Authors>SPIN0ZAi</Authors>
+    <Company>SPIN0ZAi</Company>
+    <Product>NUP Extractor</Product>
+    <Description>High-performance Nintendo Switch clean-room container extraction utility for Windows</Description>
+    <Copyright>Copyright © 2026 SPIN0ZAi</Copyright>
+    <PackageProjectUrl>https://github.com/SPIN0ZAi/nup-extractor</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/SPIN0ZAi/nup-extractor</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>

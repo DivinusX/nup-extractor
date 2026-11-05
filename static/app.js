@@ -946,7 +946,7 @@ async function startExtraction() {
     executeExtraction(nupPath, dest, mode, openWhenDone);
 }
 
-function executeExtraction(nupPath, dest, mode, openWhenDone) {
+async function executeExtraction(nupPath, dest, mode, openWhenDone) {
     lastExtractedDest = dest;
 
     // Reset modal

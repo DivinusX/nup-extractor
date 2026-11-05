@@ -63,7 +63,7 @@ public static class AppUpdateManager
         }
         catch { }
 
-        return "1.0.7";
+        return "1.0.8";
     }
 
     static AppUpdateManager()
@@ -268,7 +268,7 @@ public static class AppUpdateManager
                 }
             }
 
-            // 3. Create Updater Script and Trigger Restart
+            // 3. Launch newly extracted executable to replace the current binary in-place
             progress.Report(new UpdateProgressInfo
             {
                 Stage = "ready",
@@ -277,68 +277,17 @@ public static class AppUpdateManager
             });
 
             int pid = Environment.ProcessId;
-            string updaterCmdPath = Path.Combine(tempBase, "updater.cmd");
-            string oldExePath = currentExePath + ".old";
-
-            var scriptBuilder = new StringBuilder();
-            scriptBuilder.AppendLine("@echo off");
-            scriptBuilder.AppendLine("setlocal");
-            scriptBuilder.AppendLine($"set \"PID={pid}\"");
-            scriptBuilder.AppendLine($"set \"NEW_EXE={newExePath}\"");
-            scriptBuilder.AppendLine($"set \"TARGET_EXE={currentExePath}\"");
-            scriptBuilder.AppendLine($"set \"OLD_EXE={oldExePath}\"");
-            scriptBuilder.AppendLine($"set \"TEMP_DIR={tempBase}\"");
-            scriptBuilder.AppendLine();
-            scriptBuilder.AppendLine(":: 1. Wait for the main application process to terminate");
-            scriptBuilder.AppendLine("set /a attempts=0");
-            scriptBuilder.AppendLine(":wait_loop");
-            scriptBuilder.AppendLine("set /a attempts+=1");
-            scriptBuilder.AppendLine("if %attempts% geq 30 goto do_copy");
-            scriptBuilder.AppendLine("timeout /t 1 /nobreak >nul");
-            scriptBuilder.AppendLine("tasklist /fi \"PID eq %PID%\" 2>nul | findstr /i \"%PID%\" >nul");
-            scriptBuilder.AppendLine("if not errorlevel 1 goto wait_loop");
-            scriptBuilder.AppendLine();
-            scriptBuilder.AppendLine(":do_copy");
-            scriptBuilder.AppendLine("timeout /t 1 /nobreak >nul");
-            scriptBuilder.AppendLine(":: 2. Atomic rename of existing exe (allows instant release of file lock)");
-            scriptBuilder.AppendLine("del /f /q \"%OLD_EXE%\" >nul 2>&1");
-            scriptBuilder.AppendLine("move /y \"%TARGET_EXE%\" \"%OLD_EXE%\" >nul 2>&1");
-            scriptBuilder.AppendLine();
-            scriptBuilder.AppendLine(":: 3. Copy new updated executable into target location");
-            scriptBuilder.AppendLine("set /a copy_attempts=0");
-            scriptBuilder.AppendLine(":copy_loop");
-            scriptBuilder.AppendLine("set /a copy_attempts+=1");
-            scriptBuilder.AppendLine("copy /y \"%NEW_EXE%\" \"%TARGET_EXE%\" >nul 2>&1");
-            scriptBuilder.AppendLine("if errorlevel 1 (");
-            scriptBuilder.AppendLine("    if %copy_attempts% geq 15 goto finish");
-            scriptBuilder.AppendLine("    timeout /t 1 /nobreak >nul");
-            scriptBuilder.AppendLine("    goto copy_loop");
-            scriptBuilder.AppendLine(")");
-            scriptBuilder.AppendLine();
-            scriptBuilder.AppendLine(":: 4. Clean up old renamed binary");
-            scriptBuilder.AppendLine("del /f /q \"%OLD_EXE%\" >nul 2>&1");
-            scriptBuilder.AppendLine();
-            scriptBuilder.AppendLine(":finish");
-            scriptBuilder.AppendLine(":: 5. Launch the newly updated executable");
-            scriptBuilder.AppendLine("start \"\" \"%TARGET_EXE%\"");
-            scriptBuilder.AppendLine("timeout /t 2 /nobreak >nul");
-            scriptBuilder.AppendLine("rd /s /q \"%TEMP_DIR%\" >nul 2>&1");
-            scriptBuilder.AppendLine("exit");
-
-            File.WriteAllText(updaterCmdPath, scriptBuilder.ToString(), Encoding.ASCII);
 
             var psi = new ProcessStartInfo
             {
-                FileName = "cmd.exe",
-                Arguments = $"/c \"{updaterCmdPath}\"",
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                WindowStyle = ProcessWindowStyle.Hidden
+                FileName = newExePath,
+                Arguments = $"--update-replace \"{currentExePath}\" {pid}",
+                UseShellExecute = true
             };
 
             Process.Start(psi);
 
-            // Give the detached updater process 500ms to start up before terminating this process
+            // Give the new updater process 500ms to start up before terminating this process
             await Task.Delay(500, ct);
 
             // Terminate current process cleanly

@@ -85,7 +85,7 @@ jobs:
           --self-contained `
           -p:PublishSingleFile=true `
           -p:IncludeNativeLibrariesForSelfExtract=true `
-          -p:EnableCompressionInSingleFile=true `
+          -p:EnableCompressionInSingleFile=false `
           -p:Version=${{ env.RELEASE_VERSION }} `
           -p:AssemblyVersion=${{ env.RELEASE_VERSION }}.0 `
           -p:FileVersion=${{ env.RELEASE_VERSION }}.0 `
@@ -101,10 +101,11 @@ jobs:
         Copy-Item LICENSE release_assets/
         Compress-Archive -Path release_assets/* -DestinationPath release_assets/NUP_Extractor-windows-x64.zip
         
-        # Generate SHA256 checksums
-        $hash = Get-FileHash release_assets/NUP_Extractor-windows-x64.zip -Algorithm SHA256
-        "$($hash.Hash)  NUP_Extractor-windows-x64.zip" | Out-File -Encoding utf8 release_assets/SHA256SUMS.txt
-        Write-Host "Generated SHA-256 Checksum: $($hash.Hash)"
+        # Generate SHA256 checksums for both standalone exe and zip bundle
+        $hashZip = Get-FileHash release_assets/NUP_Extractor-windows-x64.zip -Algorithm SHA256
+        $hashExe = Get-FileHash release_assets/NUP_Extractor.exe -Algorithm SHA256
+        @("$($hashExe.Hash)  NUP_Extractor.exe", "$($hashZip.Hash)  NUP_Extractor-windows-x64.zip") | Out-File -Encoding utf8 release_assets/SHA256SUMS.txt
+        Write-Host "Generated SHA-256 Checksums"
 
     - name: Upload Build Artifacts
       uses: actions/upload-artifact@v4
@@ -118,6 +119,7 @@ jobs:
         tag_name: ${{ env.RELEASE_TAG }}
         name: NUP Extractor ${{ env.RELEASE_TAG }}
         files: |
+          release_assets/NUP_Extractor.exe
           release_assets/NUP_Extractor-windows-x64.zip
           release_assets/SHA256SUMS.txt
         draft: false
