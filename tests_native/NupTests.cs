@@ -381,6 +381,63 @@ public class NupTests
         Assert.True(!string.IsNullOrEmpty(result.LatestVersion) || !string.IsNullOrEmpty(result.Error));
     }
 
+    [Fact]
+    public void Test_CheckDiskSpace_AccurateInfoAndBoundaryChecks()
+    {
+        string currentDir = Directory.GetCurrentDirectory();
+        var spaceInfo = NupEngine.CheckDiskSpace(currentDir, 1024 * 1024); // 1 MB required
+
+        Assert.NotNull(spaceInfo);
+        Assert.False(string.IsNullOrEmpty(spaceInfo.DriveLetter));
+        Assert.True(spaceInfo.TotalBytes > 0);
+        Assert.True(spaceInfo.FreeBytes > 0);
+        Assert.True(spaceInfo.HasSufficientSpace);
+        Assert.False(string.IsNullOrEmpty(spaceInfo.FreeFormatted));
+
+        // Test with massive size that exceeds disk space
+        ulong hugeRequirement = spaceInfo.TotalBytes + (1024UL * 1024UL * 1024UL * 100UL); // Drive total + 100 GB
+        var lowSpaceInfo = NupEngine.CheckDiskSpace(currentDir, hugeRequirement);
+        Assert.False(lowSpaceInfo.HasSufficientSpace);
+    }
+
+    [Fact]
+    public void Test_ExtractSingleFile_ExtractsExactFile()
+    {
+        using var reader = new NupReader(SampleNupPath);
+        Assert.True(reader.Files.Count > 0);
+
+        var targetFile = reader.Files[0];
+        string tempOut = Path.Combine(Path.GetTempPath(), $"nup_test_single_{Guid.NewGuid():N}.bin");
+
+        try
+        {
+            NupEngine.ExtractSingleFile(SampleNupPath, 0, tempOut);
+
+            Assert.True(File.Exists(tempOut));
+            var fi = new FileInfo(tempOut);
+            Assert.Equal((long)targetFile.Size, fi.Length);
+
+            byte[] actualHash = SHA256.HashData(File.ReadAllBytes(tempOut));
+            Assert.Equal(Convert.ToHexString(targetFile.Sha256), Convert.ToHexString(actualHash));
+        }
+        finally
+        {
+            if (File.Exists(tempOut))
+            {
+                File.Delete(tempOut);
+            }
+        }
+    }
+
+    [Fact]
+    public void Test_ShellIntegration_StatusCheckDoesNotThrow()
+    {
+        // Calling IsRegistered() should safely query HKCU without throwing
+        bool isRegistered = ShellIntegration.IsRegistered();
+        // Just verify it returns a boolean (either true or false depending on current user registry state)
+        Assert.True(isRegistered == true || isRegistered == false);
+    }
+
     private class SyncProgress<T> : IProgress<T>
     {
         private readonly Action<T> _handler;
