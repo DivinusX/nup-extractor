@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
@@ -436,6 +437,40 @@ public class NupTests
         bool isRegistered = ShellIntegration.IsRegistered();
         // Just verify it returns a boolean (either true or false depending on current user registry state)
         Assert.True(isRegistered == true || isRegistered == false);
+    }
+
+    [Fact]
+    public void Test_StaticAssets_JavaScriptSyntaxValidation()
+    {
+        string jsPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../static/app.js"));
+        Assert.True(File.Exists(jsPath), $"app.js not found at {jsPath}");
+
+        string jsContent = File.ReadAllText(jsPath);
+        Assert.False(string.IsNullOrWhiteSpace(jsContent));
+
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = "node",
+                Arguments = $"-c \"{jsPath}\"",
+                RedirectStandardError = true,
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            using var proc = Process.Start(psi);
+            if (proc != null)
+            {
+                proc.WaitForExit(5000);
+                string stderr = proc.StandardError.ReadToEnd();
+                Assert.True(proc.ExitCode == 0, $"JavaScript syntax error in static/app.js:\n{stderr}");
+            }
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            // Node not installed in test runner environment; skip external validator
+        }
     }
 
     private class SyncProgress<T> : IProgress<T>

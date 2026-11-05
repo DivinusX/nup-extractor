@@ -63,7 +63,7 @@ public static class AppUpdateManager
         }
         catch { }
 
-        return "1.0.7";
+        return "1.0.8";
     }
 
     static AppUpdateManager()
