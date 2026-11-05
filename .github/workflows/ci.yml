@@ -1,0 +1,46 @@
+name: CI Verification (Build & Test)
+
+on:
+  pull_request:
+    branches: [ "develop", "main" ]
+  push:
+    branches: [ "develop" ]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Build, Test & Package Verification
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Restore Dependencies
+      run: dotnet restore NupExtractor.slnx
+
+    - name: Compile Solution (Release Mode)
+      run: dotnet build NupExtractor.slnx -c Release --no-restore
+
+    - name: Execute Automated Unit Tests (xUnit)
+      run: dotnet test NupExtractor.slnx -c Release --no-build --verbosity normal
+
+    - name: Verify Standalone Executable Packaging
+      run: |
+        dotnet publish src_native/NupExtractorApp.csproj `
+          -c Release `
+          -r win-x64 `
+          --self-contained `
+          -p:PublishSingleFile=true `
+          -p:IncludeNativeLibrariesForSelfExtract=true `
+          -p:EnableCompressionInSingleFile=true `
+          -o dist_verify
