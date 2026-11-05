@@ -26,6 +26,10 @@
         </div>
 
         <div class="header-actions">
+            <button id="btn-shell-settings" class="btn btn-secondary" title="Windows Explorer Right-Click Integration">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>
+                Explorer Menu
+            </button>
             <button id="btn-check-updates" class="btn btn-secondary" title="Check for software updates">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
                 Updates
@@ -403,6 +407,106 @@
                 <button id="btn-update-cancel" class="btn btn-secondary">
                     Cancel
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right-Click Context Menu for File Tree -->
+    <div id="file-context-menu" class="context-menu">
+        <div class="context-menu-header" id="ctx-file-name">file.bin</div>
+        <div class="context-menu-item" id="ctx-extract-file">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Extract this file...
+        </div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item" id="ctx-copy-path">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            Copy Relative Path
+        </div>
+        <div class="context-menu-item" id="ctx-copy-hash">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            Copy SHA-256 Hash
+        </div>
+    </div>
+
+    <!-- Disk Space Warning Modal -->
+    <div id="disk-space-modal" class="modal-overlay">
+        <div class="modal-card" style="max-width: 480px;">
+            <div class="progress-header" style="margin-bottom: 0.75rem;">
+                <h3 style="font-size: 1.15rem; font-weight: 800; display: flex; align-items: center; gap: 0.5rem; color: #ffb703;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                    Low Disk Space Warning
+                </h3>
+            </div>
+            <div style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 1.25rem;">
+                Destination drive <strong id="disk-space-drive" style="color: var(--text-primary);">C:\</strong> has only <strong id="disk-space-free" style="color: var(--switch-red);">0 GB</strong> free space, but this extraction requires <strong id="disk-space-required" style="color: var(--switch-blue);">0 GB</strong>.
+                <div style="margin-top: 0.6rem; font-size: 0.82rem; color: var(--text-muted);">
+                    Continuing may cause extraction to fail if the drive runs completely out of storage space.
+                </div>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+                <button id="btn-disk-space-change-folder" class="btn btn-secondary">
+                    Change Folder
+                </button>
+                <button id="btn-disk-space-continue" class="btn btn-primary" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                    Continue Anyway
+                </button>
+                <button id="btn-disk-space-cancel" class="btn btn-ghost">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Windows Shell Integration Settings Modal -->
+    <div id="shell-settings-modal" class="modal-overlay">
+        <div class="modal-card" style="max-width: 520px;">
+            <div class="progress-header" style="margin-bottom: 1rem;">
+                <h3 style="font-size: 1.2rem; font-weight: 800; display: flex; align-items: center; gap: 0.5rem;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--switch-blue);"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                    Windows Explorer Shell Integration
+                </h3>
+            </div>
+            <div style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 1.25rem;">
+                Integrate NUP Extractor directly into the Windows right-click context menu (like WinRAR or 7-Zip).
+            </div>
+
+            <div style="background: rgba(0, 0, 0, 0.3); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem;">
+                <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
+                    <span style="font-size: 1.2rem;">📦</span>
+                    <div>
+                        <div style="font-size: 0.88rem; font-weight: 700; color: var(--text-primary);">"Extract Here with NUP Extractor"</div>
+                        <div style="font-size: 0.78rem; color: var(--text-muted);">Extracts the .nup container directly to the current folder.</div>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
+                    <span style="font-size: 1.2rem;">📂</span>
+                    <div>
+                        <div style="font-size: 0.88rem; font-weight: 700; color: var(--text-primary);">"Extract to folder with NUP Extractor"</div>
+                        <div style="font-size: 0.78rem; color: var(--text-muted);">Extracts the .nup container into an organized subfolder.</div>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
+                    <span style="font-size: 1.2rem;">🔗</span>
+                    <div>
+                        <div style="font-size: 0.88rem; font-weight: 700; color: var(--text-primary);">Default .NUP File Association</div>
+                        <div style="font-size: 0.78rem; color: var(--text-muted);">Double-clicking any .nup file opens it directly in NUP Extractor.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div id="shell-status-indicator" style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">
+                    Status: Checking...
+                </div>
+                <div style="display: flex; gap: 0.75rem;">
+                    <button id="btn-toggle-shell-integration" class="btn btn-cyan">
+                        Enable Integration
+                    </button>
+                    <button id="btn-close-shell-settings" class="btn btn-secondary">
+                        Close
+                    </button>
+                </div>
             </div>
         </div>
     </div>

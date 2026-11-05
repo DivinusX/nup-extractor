@@ -155,7 +155,44 @@ public partial class MainWindow : Window
                     break;
 
                 case "get_app_info":
-                    SendIpcResponse(new { id, action = "app_info_result", version = AppUpdateManager.CurrentVersion });
+                    SendIpcResponse(new
+                    {
+                        id,
+                        action = "app_info_result",
+                        success = true,
+                        version = AppUpdateManager.CurrentVersion,
+                        initialFilePath = App.InitialFilePath
+                    });
+                    break;
+
+                case "check_disk_space":
+                    HandleCheckDiskSpace(id, root);
+                    break;
+
+                case "extract_single_file":
+                    await HandleExtractSingleFileAsync(id, root);
+                    break;
+
+                case "get_shell_integration_status":
+                    SendIpcResponse(new
+                    {
+                        id,
+                        action = "shell_integration_status_result",
+                        success = true,
+                        registered = ShellIntegration.IsRegistered()
+                    });
+                    break;
+
+                case "toggle_shell_integration":
+                    bool enable = GetBool(root, "enable") ?? false;
+                    bool regSuccess = enable ? ShellIntegration.Register() : ShellIntegration.Unregister();
+                    SendIpcResponse(new
+                    {
+                        id,
+                        action = "toggle_shell_integration_result",
+                        success = regSuccess,
+                        registered = ShellIntegration.IsRegistered()
+                    });
                     break;
 
                 case "check_update":
@@ -517,6 +554,77 @@ public partial class MainWindow : Window
             SendIpcResponse(new
             {
                 type = "update_error",
+                error = ex.Message
+            });
+        }
+    }
+
+    private void HandleCheckDiskSpace(string id, JsonElement root)
+    {
+        string? destDir = GetString(root, "destDir", "dest_dir", "path");
+        ulong requiredBytes = (ulong)(GetInt(root, "requiredBytes", "required_bytes") ?? 0);
+
+        if (root.TryGetProperty("requiredBytes", out var rb) && rb.ValueKind == JsonValueKind.Number)
+        {
+            if (rb.TryGetUInt64(out ulong rbu)) requiredBytes = rbu;
+        }
+
+        var info = NupEngine.CheckDiskSpace(destDir ?? "", requiredBytes);
+        SendIpcResponse(new
+        {
+            id,
+            action = "check_disk_space_result",
+            success = true,
+            data = info
+        });
+    }
+
+    private async Task HandleExtractSingleFileAsync(string id, JsonElement root)
+    {
+        string? nupPath = GetString(root, "filePath", "file_path");
+        int fileIndex = GetInt(root, "fileIndex", "file_index") ?? -1;
+        string suggestedName = GetString(root, "fileName", "file_name", "name") ?? "extracted_file";
+
+        if (string.IsNullOrWhiteSpace(nupPath) || !File.Exists(nupPath) || fileIndex < 0)
+        {
+            SendIpcResponse(new { id, action = "extract_single_file_result", success = false, error = "Invalid file parameters." });
+            return;
+        }
+
+        var sfd = new SaveFileDialog
+        {
+            Title = $"Save {suggestedName} As",
+            FileName = suggestedName,
+            Filter = "All files (*.*)|*.*"
+        };
+
+        bool? result = sfd.ShowDialog(this);
+        if (result != true || string.IsNullOrWhiteSpace(sfd.FileName))
+        {
+            SendIpcResponse(new { id, action = "extract_single_file_result", success = false, cancelled = true });
+            return;
+        }
+
+        try
+        {
+            string dest = sfd.FileName;
+            await Task.Run(() => NupEngine.ExtractSingleFile(nupPath, fileIndex, dest));
+            SendIpcResponse(new
+            {
+                id,
+                action = "extract_single_file_result",
+                success = true,
+                destPath = dest,
+                fileName = Path.GetFileName(dest)
+            });
+        }
+        catch (Exception ex)
+        {
+            SendIpcResponse(new
+            {
+                id,
+                action = "extract_single_file_result",
+                success = false,
                 error = ex.Message
             });
         }

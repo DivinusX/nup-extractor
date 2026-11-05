@@ -129,6 +129,32 @@ const verifyStatusText = document.getElementById("verify-status-text");
 const verifyResultBox = document.getElementById("verify-result-box");
 const btnVerifyModalClose = document.getElementById("btn-verify-modal-close");
 
+// Right-Click Context Menu Elements
+const fileContextMenu = document.getElementById("file-context-menu");
+const ctxFileName = document.getElementById("ctx-file-name");
+const ctxExtractFile = document.getElementById("ctx-extract-file");
+const ctxCopyPath = document.getElementById("ctx-copy-path");
+const ctxCopyHash = document.getElementById("ctx-copy-hash");
+let selectedContextFile = null;
+
+// Disk Space Warning Modal Elements
+const diskSpaceModal = document.getElementById("disk-space-modal");
+const diskSpaceDrive = document.getElementById("disk-space-drive");
+const diskSpaceFree = document.getElementById("disk-space-free");
+const diskSpaceRequired = document.getElementById("disk-space-required");
+const btnDiskSpaceChangeFolder = document.getElementById("btn-disk-space-change-folder");
+const btnDiskSpaceContinue = document.getElementById("btn-disk-space-continue");
+const btnDiskSpaceCancel = document.getElementById("btn-disk-space-cancel");
+let diskSpaceContinueCallback = null;
+
+// Windows Shell Integration Elements
+const btnShellSettings = document.getElementById("btn-shell-settings");
+const shellSettingsModal = document.getElementById("shell-settings-modal");
+const shellStatusIndicator = document.getElementById("shell-status-indicator");
+const btnToggleShellIntegration = document.getElementById("btn-toggle-shell-integration");
+const btnCloseShellSettings = document.getElementById("btn-close-shell-settings");
+let isShellRegistered = false;
+
 // Initialization
 document.addEventListener("DOMContentLoaded", () => {
     setupEventListeners();
@@ -234,6 +260,205 @@ function setupEventListeners() {
             }
         }
     });
+
+    // Disk Space Modal Listeners
+    if (btnDiskSpaceContinue) {
+        btnDiskSpaceContinue.addEventListener("click", () => {
+            diskSpaceModal.classList.remove("active");
+            if (diskSpaceContinueCallback) {
+                const cb = diskSpaceContinueCallback;
+                diskSpaceContinueCallback = null;
+                cb();
+            }
+        });
+    }
+
+    if (btnDiskSpaceChangeFolder) {
+        btnDiskSpaceChangeFolder.addEventListener("click", async () => {
+            diskSpaceModal.classList.remove("active");
+            diskSpaceContinueCallback = null;
+            await browseNativeFolder();
+        });
+    }
+
+    if (btnDiskSpaceCancel) {
+        btnDiskSpaceCancel.addEventListener("click", () => {
+            diskSpaceModal.classList.remove("active");
+            diskSpaceContinueCallback = null;
+        });
+    }
+
+    // Context Menu Action Listeners
+    if (ctxExtractFile) {
+        ctxExtractFile.addEventListener("click", async () => {
+            hideContextMenu();
+            if (!selectedContextFile || !currentContainer) return;
+            const nupPath = currentContainer.file_path || currentContainer.filePath;
+            if (!nupPath) return;
+
+            if (isNative) {
+                try {
+                    showToast(`Extracting ${selectedContextFile.name}...`);
+                    const res = await nativeCall("extract_single_file", {
+                        filePath: nupPath,
+                        fileIndex: selectedContextFile.index,
+                        fileName: selectedContextFile.name
+                    });
+                    if (res && res.success) {
+                        showToast(`Extracted ${res.fileName || selectedContextFile.name}!`);
+                    } else if (res && res.cancelled) {
+                        // User cancelled Save As dialog
+                    } else {
+                        alert("Extraction failed: " + (res?.error || "Unknown error"));
+                    }
+                } catch (err) {
+                    alert("Error extracting file: " + err.message);
+                }
+            } else {
+                showToast("Single-file extract is supported in desktop app mode.");
+            }
+        });
+    }
+
+    if (ctxCopyPath) {
+        ctxCopyPath.addEventListener("click", () => {
+            hideContextMenu();
+            if (!selectedContextFile) return;
+            const pathText = selectedContextFile.relPath || selectedContextFile.name;
+            navigator.clipboard.writeText(pathText).then(() => {
+                showToast(`Copied path: ${pathText}`);
+            }).catch(() => {
+                showToast("Failed to copy to clipboard");
+            });
+        });
+    }
+
+    if (ctxCopyHash) {
+        ctxCopyHash.addEventListener("click", () => {
+            hideContextMenu();
+            if (!selectedContextFile) return;
+            const hash = selectedContextFile.sha256;
+            if (hash) {
+                navigator.clipboard.writeText(hash).then(() => {
+                    showToast("Copied SHA-256 hash!");
+                }).catch(() => {
+                    showToast("Failed to copy to clipboard");
+                });
+            } else {
+                showToast("No SHA-256 hash available for this file");
+            }
+        });
+    }
+
+    // Dismiss context menu on click outside
+    document.addEventListener("click", (e) => {
+        if (fileContextMenu && !e.target.closest("#file-context-menu")) {
+            hideContextMenu();
+        }
+    });
+
+    document.addEventListener("contextmenu", (e) => {
+        if (fileContextMenu && !e.target.closest(".node-row")) {
+            hideContextMenu();
+        }
+    });
+
+    // Windows Explorer Shell Integration Listeners
+    if (btnShellSettings) {
+        btnShellSettings.addEventListener("click", () => {
+            shellSettingsModal.classList.add("active");
+            refreshShellStatus();
+        });
+    }
+
+    if (btnCloseShellSettings) {
+        btnCloseShellSettings.addEventListener("click", () => {
+            shellSettingsModal.classList.remove("active");
+        });
+    }
+
+    if (btnToggleShellIntegration) {
+        btnToggleShellIntegration.addEventListener("click", async () => {
+            try {
+                btnToggleShellIntegration.disabled = true;
+                const enable = !isShellRegistered;
+                const res = await nativeCall("toggle_shell_integration", { enable });
+                if (res && res.success) {
+                    showToast(enable ? "Windows Explorer context menu registered!" : "Windows Explorer context menu removed.");
+                } else {
+                    showToast("Failed to update Windows Explorer settings.");
+                }
+                await refreshShellStatus();
+            } catch (e) {
+                showToast("Error: " + e.message);
+            } finally {
+                btnToggleShellIntegration.disabled = false;
+            }
+        });
+    }
+}
+
+// Context Menu Helpers
+function showContextMenu(x, y, fileData) {
+    if (!fileContextMenu) return;
+    selectedContextFile = fileData;
+    if (ctxFileName) {
+        ctxFileName.textContent = fileData.name || "Selected File";
+    }
+
+    fileContextMenu.style.display = "flex";
+    fileContextMenu.classList.add("show");
+
+    const menuWidth = 220;
+    const menuHeight = 150;
+    const posX = Math.min(x, window.innerWidth - menuWidth - 10);
+    const posY = Math.min(y, window.innerHeight - menuHeight - 10);
+
+    fileContextMenu.style.left = `${Math.max(10, posX)}px`;
+    fileContextMenu.style.top = `${Math.max(10, posY)}px`;
+}
+
+function hideContextMenu() {
+    if (fileContextMenu) {
+        fileContextMenu.classList.remove("show");
+        fileContextMenu.style.display = "none";
+    }
+}
+
+// Disk Space Warning Helper
+function showDiskSpaceModal(info, onContinue) {
+    diskSpaceContinueCallback = onContinue;
+    if (diskSpaceDrive) diskSpaceDrive.textContent = info.driveLetter || "Target Drive";
+    if (diskSpaceFree) diskSpaceFree.textContent = info.freeFormatted || formatBytes(info.freeBytes);
+    if (diskSpaceRequired) diskSpaceRequired.textContent = info.requiredFormatted || formatBytes(info.requiredBytes);
+    if (diskSpaceModal) diskSpaceModal.classList.add("active");
+}
+
+// Windows Explorer Shell Integration Helper
+async function refreshShellStatus() {
+    if (!shellStatusIndicator || !btnToggleShellIntegration) return;
+    if (!isNative) {
+        shellStatusIndicator.textContent = "Status: Available only in native Windows desktop app";
+        btnToggleShellIntegration.disabled = true;
+        return;
+    }
+    try {
+        const res = await nativeCall("get_shell_integration_status");
+        isShellRegistered = !!(res && res.registered);
+        if (isShellRegistered) {
+            shellStatusIndicator.innerHTML = 'Status: <span style="color: var(--switch-green); font-weight: 700;">Active in Windows Explorer</span>';
+            btnToggleShellIntegration.textContent = "Remove from Explorer";
+            btnToggleShellIntegration.className = "btn btn-ghost";
+            btnToggleShellIntegration.style.color = "var(--switch-red)";
+        } else {
+            shellStatusIndicator.innerHTML = 'Status: <span style="color: var(--text-muted);">Not Registered</span>';
+            btnToggleShellIntegration.textContent = "Enable Integration";
+            btnToggleShellIntegration.className = "btn btn-cyan";
+            btnToggleShellIntegration.style.color = "";
+        }
+    } catch (e) {
+        shellStatusIndicator.textContent = "Status check error: " + e.message;
+    }
 }
 
 // Native File Picker
@@ -554,6 +779,15 @@ function renderTreeNodes(children, parentEl, depth = 0) {
                     <span>${sizeFormatted}</span>
                 </div>
             `;
+            rowEl.addEventListener("contextmenu", (e) => {
+                e.preventDefault();
+                showContextMenu(e.clientX, e.clientY, {
+                    name: node.name,
+                    relPath: node.rel_path || node.relPath || node.name,
+                    sha256: node.sha256,
+                    index: node.index
+                });
+            });
             nodeEl.appendChild(rowEl);
         }
 
@@ -646,6 +880,15 @@ function renderSearchResults(results, q) {
                 <span>${sizeFormatted}</span>
             </div>
         `;
+        row.addEventListener("contextmenu", (e) => {
+            e.preventDefault();
+            showContextMenu(e.clientX, e.clientY, {
+                name: file.name,
+                relPath: file.rel_path || file.relPath || file.name,
+                sha256: file.sha256,
+                index: file.index
+            });
+        });
         treeViewEl.appendChild(row);
     });
 }
@@ -676,6 +919,34 @@ async function startExtraction() {
 
     const mode = document.querySelector("input[name='extract-mode']:checked").value;
     const openWhenDone = checkOpenExplorer.checked;
+
+    // Check disk space if running in native desktop app
+    if (isNative) {
+        let requiredBytes = 0;
+        if (mode === "package" && currentContainer.packages && currentContainer.packages[activePackageIndex]) {
+            const pkg = currentContainer.packages[activePackageIndex];
+            requiredBytes = pkg.total_uncompressed_bytes || pkg.totalUncompressedBytes || 0;
+        } else {
+            requiredBytes = currentContainer.total_uncompressed_bytes || currentContainer.totalUncompressedBytes || 0;
+        }
+
+        try {
+            const spaceInfo = await nativeCall("check_disk_space", { destDir: dest, requiredBytes: requiredBytes });
+            if (spaceInfo && !spaceInfo.hasSufficientSpace) {
+                showDiskSpaceModal(spaceInfo, () => {
+                    executeExtraction(nupPath, dest, mode, openWhenDone);
+                });
+                return;
+            }
+        } catch (e) {
+            console.warn("Disk space pre-check error:", e);
+        }
+    }
+
+    executeExtraction(nupPath, dest, mode, openWhenDone);
+}
+
+function executeExtraction(nupPath, dest, mode, openWhenDone) {
     lastExtractedDest = dest;
 
     // Reset modal
@@ -1077,6 +1348,9 @@ if (isNative) {
     nativeCall("get_app_info").then(res => {
         if (res && res.version && appVersionBadge) {
             appVersionBadge.textContent = "v" + res.version;
+        }
+        if (res && res.initialFilePath) {
+            loadNup(res.initialFilePath);
         }
     }).catch(() => {});
 

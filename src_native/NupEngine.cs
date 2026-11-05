@@ -36,6 +36,18 @@ public class VerifyProgressInfo
     public string? Error { get; set; }
 }
 
+public class DiskSpaceInfo
+{
+    public bool HasSufficientSpace { get; set; }
+    public ulong FreeBytes { get; set; }
+    public ulong RequiredBytes { get; set; }
+    public ulong TotalBytes { get; set; }
+    public string FreeFormatted { get; set; } = "";
+    public string RequiredFormatted { get; set; } = "";
+    public string DriveName { get; set; } = "";
+    public string DriveLetter => DriveName;
+}
+
 public static class NupEngine
 {
     public static string FormatBytes(ulong size)
@@ -613,5 +625,67 @@ public static class NupEngine
                 UseShellExecute = true
             });
         }
+    }
+
+    public static DiskSpaceInfo CheckDiskSpace(string destinationDir, ulong requiredBytes)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(destinationDir))
+            {
+                destinationDir = Directory.GetCurrentDirectory();
+            }
+
+            string fullPath = Path.GetFullPath(destinationDir);
+            string root = Path.GetPathRoot(fullPath) ?? "";
+            var drive = new DriveInfo(root);
+
+            ulong freeBytes = (ulong)drive.AvailableFreeSpace;
+            ulong totalBytes = (ulong)drive.TotalSize;
+            return new DiskSpaceInfo
+            {
+                HasSufficientSpace = freeBytes >= requiredBytes,
+                FreeBytes = freeBytes,
+                TotalBytes = totalBytes,
+                RequiredBytes = requiredBytes,
+                FreeFormatted = FormatBytes(freeBytes),
+                RequiredFormatted = FormatBytes(requiredBytes),
+                DriveName = drive.Name
+            };
+        }
+        catch
+        {
+            return new DiskSpaceInfo
+            {
+                HasSufficientSpace = true,
+                FreeBytes = ulong.MaxValue,
+                RequiredBytes = requiredBytes,
+                FreeFormatted = "Unknown",
+                RequiredFormatted = FormatBytes(requiredBytes),
+                DriveName = destinationDir
+            };
+        }
+    }
+
+    public static void ExtractSingleFile(string nupPath, int fileIndex, string destFilePath)
+    {
+        if (string.IsNullOrWhiteSpace(nupPath))
+            throw new ArgumentException("NUP path cannot be empty.", nameof(nupPath));
+        if (string.IsNullOrWhiteSpace(destFilePath))
+            throw new ArgumentException("Destination file path cannot be empty.", nameof(destFilePath));
+
+        string cleanNup = nupPath.Trim().Trim('"', '\'');
+        string cleanDest = destFilePath.Trim().Trim('"', '\'');
+
+        using var reader = new NupReader(cleanNup);
+        if (fileIndex < 0 || fileIndex >= reader.Files.Count)
+            throw new ArgumentOutOfRangeException(nameof(fileIndex));
+
+        string? dir = Path.GetDirectoryName(cleanDest);
+        if (!string.IsNullOrEmpty(dir))
+            Directory.CreateDirectory(dir);
+
+        using var fs = new FileStream(cleanDest, FileMode.Create, FileAccess.Write, FileShare.None, 131072);
+        reader.ExtractFileToStream(fileIndex, fs);
     }
 }

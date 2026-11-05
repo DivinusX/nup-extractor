@@ -8,8 +8,57 @@ namespace NupExtractorApp;
 
 public partial class App : Application
 {
+    public static string? InitialFilePath { get; set; }
+
     protected override void OnStartup(StartupEventArgs e)
     {
+        if (e.Args.Length > 0)
+        {
+            string first = e.Args[0];
+
+            if (first == "--extract-here" && e.Args.Length > 1)
+            {
+                string target = e.Args[1];
+                string dest = Path.GetDirectoryName(Path.GetFullPath(target)) ?? Directory.GetCurrentDirectory();
+                try
+                {
+                    var progress = new Progress<ProgressInfo>(_ => { });
+                    NupEngine.Extract(target, dest, "all", null, null, progress, CancellationToken.None);
+                    NupEngine.OpenFolder(dest);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Failed to extract '{Path.GetFileName(target)}':\n{ex.Message}", "Extraction Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+                Shutdown(0);
+                return;
+            }
+
+            if (first == "--extract-to-folder" && e.Args.Length > 1)
+            {
+                string target = e.Args[1];
+                string baseDir = Path.GetDirectoryName(Path.GetFullPath(target)) ?? Directory.GetCurrentDirectory();
+                string folderName = Path.GetFileNameWithoutExtension(target) + "_extracted";
+                string dest = Path.Combine(baseDir, folderName);
+                try
+                {
+                    var progress = new Progress<ProgressInfo>(_ => { });
+                    NupEngine.Extract(target, dest, "all", null, null, progress, CancellationToken.None);
+                    NupEngine.OpenFolder(dest);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Failed to extract '{Path.GetFileName(target)}':\n{ex.Message}", "Extraction Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+                Shutdown(0);
+                return;
+            }
+
+            if (File.Exists(first) && first.EndsWith(".nup", StringComparison.OrdinalIgnoreCase))
+            {
+                InitialFilePath = Path.GetFullPath(first);
+            }
+        }
         if (e.Args.Length > 0 && e.Args[0] == "--test-inspect")
         {
             string target = e.Args.Length > 1 ? e.Args[1] : "sample_game.nup";
