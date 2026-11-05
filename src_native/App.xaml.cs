@@ -16,6 +16,16 @@ public partial class App : Application
         {
             string first = e.Args[0];
 
+            if (first == "--update-replace" && e.Args.Length >= 3)
+            {
+                string targetExe = e.Args[1];
+                if (int.TryParse(e.Args[2], out int oldPid))
+                {
+                    PerformInPlaceUpdate(targetExe, oldPid);
+                    return;
+                }
+            }
+
             if (first == "--extract-here" && e.Args.Length > 1)
             {
                 string target = e.Args[1];
@@ -98,5 +108,54 @@ public partial class App : Application
         }
 
         base.OnStartup(e);
+    }
+
+    private void PerformInPlaceUpdate(string targetExe, int oldPid)
+    {
+        try
+        {
+            try
+            {
+                var oldProc = System.Diagnostics.Process.GetProcessById(oldPid);
+                oldProc.WaitForExit(15000);
+            }
+            catch { }
+
+            Thread.Sleep(500);
+
+            string currentExe = Environment.ProcessPath ?? "";
+            if (!string.IsNullOrEmpty(currentExe) && File.Exists(currentExe))
+            {
+                string oldBackup = targetExe + ".old";
+
+                if (File.Exists(oldBackup))
+                {
+                    try { File.Delete(oldBackup); } catch { }
+                }
+
+                if (File.Exists(targetExe))
+                {
+                    File.Move(targetExe, oldBackup);
+                }
+
+                File.Copy(currentExe, targetExe, overwrite: true);
+
+                try { File.Delete(oldBackup); } catch { }
+
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = targetExe,
+                    UseShellExecute = true
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Failed to apply update to '{targetExe}':\n{ex.Message}", "Update Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            Shutdown(0);
+        }
     }
 }
