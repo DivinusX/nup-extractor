@@ -64,6 +64,10 @@ if (isNative) {
             onVerifyDone(info || msg);
         } else if (type === "verify_error") {
             onVerifyError(msg);
+        } else if (type === "update_progress" && info) {
+            onUpdateProgress(info);
+        } else if (type === "update_error") {
+            onUpdateError(msg);
         }
     });
 }
@@ -901,4 +905,183 @@ function showToast(message) {
     setTimeout(() => {
         toast.classList.remove("show");
     }, 2800);
+}
+
+// ==========================================
+// Software Auto-Updater Implementation
+// ==========================================
+
+let pendingUpdateData = null;
+
+const btnCheckUpdates = document.getElementById("btn-check-updates");
+const appVersionBadge = document.getElementById("app-version-badge");
+const updateModal = document.getElementById("update-modal");
+const updateProgressModal = document.getElementById("update-progress-modal");
+const updateVersionBadge = document.getElementById("update-version-badge");
+const updateReleaseTitle = document.getElementById("update-release-title");
+const updateReleaseNotes = document.getElementById("update-release-notes");
+const updateReleaseSize = document.getElementById("update-release-size");
+const btnUpdateNow = document.getElementById("btn-update-now");
+const btnUpdateLater = document.getElementById("btn-update-later");
+const btnUpdateIgnore = document.getElementById("btn-update-ignore");
+const btnUpdateCancel = document.getElementById("btn-update-cancel");
+const updateProgressPct = document.getElementById("update-progress-pct");
+const updateProgressBar = document.getElementById("update-progress-bar");
+const updateProgressSpeed = document.getElementById("update-progress-speed");
+const updateProgressBytes = document.getElementById("update-progress-bytes");
+const updateProgressStatus = document.getElementById("update-progress-status");
+const updateProgressTitle = document.getElementById("update-progress-title");
+
+async function checkForUpdates(isManual = false) {
+    if (!isNative) return;
+
+    if (isManual) {
+        showToast("Checking GitHub Releases for updates...");
+    }
+
+    try {
+        const res = await nativeCall("check_update", { manual: isManual });
+        const data = res.data || res;
+
+        if (data.currentVersion && appVersionBadge) {
+            appVersionBadge.textContent = "v" + data.currentVersion;
+        }
+
+        if (data.updateAvailable && data.downloadUrl) {
+            const ignoredVersion = localStorage.getItem("nup_ignored_update_version");
+            if (isManual || ignoredVersion !== data.latestVersion) {
+                pendingUpdateData = data;
+                showUpdateModal(data);
+            }
+        } else if (isManual) {
+            showToast(`You have the latest version (${data.currentVersion ? 'v' + data.currentVersion : 'up to date'})!`);
+        }
+    } catch (err) {
+        console.warn("Update check failed:", err);
+        if (isManual) {
+            showToast(`Update check failed: ${err.message || err}`);
+        }
+    }
+}
+
+function showUpdateModal(data) {
+    if (!updateModal) return;
+
+    updateVersionBadge.textContent = "v" + (data.latestVersion || "new");
+    updateReleaseTitle.textContent = data.releaseName || `NUP Extractor v${data.latestVersion}`;
+    updateReleaseNotes.textContent = data.releaseNotes || "Performance enhancements, engine optimizations, and bug fixes.";
+
+    if (data.downloadSize > 0) {
+        updateReleaseSize.textContent = `Download package: ~${formatBytes(data.downloadSize)}`;
+        updateReleaseSize.style.display = "block";
+    } else {
+        updateReleaseSize.style.display = "none";
+    }
+
+    updateModal.classList.add("active");
+}
+
+function onUpdateProgress(info) {
+    if (!updateProgressModal.classList.contains("active")) {
+        updateProgressModal.classList.add("active");
+    }
+
+    const rawPct = info.percent ?? info.Percent ?? 0;
+    const pct = Math.min(100, Math.max(0, Math.round(rawPct)));
+
+    updateProgressPct.textContent = `${pct}%`;
+    updateProgressBar.style.width = `${pct}%`;
+
+    const downloaded = info.bytesDownloaded ?? info.BytesDownloaded ?? 0;
+    const total = info.totalBytes ?? info.TotalBytes ?? 0;
+    const speed = info.speedFormatted ?? info.SpeedFormatted ?? "";
+    const stage = info.stage ?? info.Stage ?? "downloading";
+    const msg = info.message ?? info.Message ?? "";
+
+    if (speed) {
+        updateProgressSpeed.textContent = speed;
+    }
+    if (total > 0) {
+        updateProgressBytes.textContent = `${formatBytes(downloaded)} / ${formatBytes(total)}`;
+    }
+
+    if (msg) {
+        updateProgressStatus.textContent = msg;
+    }
+
+    if (stage === "ready") {
+        updateProgressTitle.textContent = "Restarting...";
+        updateProgressStatus.textContent = "Restarting NUP Extractor to finalize update...";
+        btnUpdateCancel.style.display = "none";
+    }
+}
+
+function onUpdateError(msg) {
+    const errorText = (msg && (msg.error || msg.Error)) || "Update failed";
+    updateProgressStatus.textContent = `Error: ${errorText}`;
+    updateProgressStatus.style.color = "var(--switch-red)";
+    showToast(`Update error: ${errorText}`);
+    btnUpdateCancel.textContent = "Close";
+}
+
+if (btnCheckUpdates) {
+    btnCheckUpdates.addEventListener("click", () => checkForUpdates(true));
+}
+
+if (appVersionBadge) {
+    appVersionBadge.addEventListener("click", () => checkForUpdates(true));
+}
+
+if (btnUpdateNow) {
+    btnUpdateNow.addEventListener("click", () => {
+        if (!pendingUpdateData || !pendingUpdateData.downloadUrl) return;
+
+        updateModal.classList.remove("active");
+        updateProgressModal.classList.add("active");
+        btnUpdateCancel.style.display = "inline-flex";
+        btnUpdateCancel.textContent = "Cancel";
+
+        nativeCall("start_update", {
+            downloadUrl: pendingUpdateData.downloadUrl
+        }).catch(err => {
+            onUpdateError({ error: err.message });
+        });
+    });
+}
+
+if (btnUpdateLater) {
+    btnUpdateLater.addEventListener("click", () => {
+        updateModal.classList.remove("active");
+    });
+}
+
+if (btnUpdateIgnore) {
+    btnUpdateIgnore.addEventListener("click", () => {
+        if (pendingUpdateData && pendingUpdateData.latestVersion) {
+            localStorage.setItem("nup_ignored_update_version", pendingUpdateData.latestVersion);
+        }
+        updateModal.classList.remove("active");
+        showToast("Update skipped. You won't be reminded about this version.");
+    });
+}
+
+if (btnUpdateCancel) {
+    btnUpdateCancel.addEventListener("click", () => {
+        nativeCall("cancel_update").catch(() => {});
+        updateProgressModal.classList.remove("active");
+    });
+}
+
+// Initialize App Version and check for updates silently in the background
+if (isNative) {
+    nativeCall("get_app_info").then(res => {
+        if (res && res.version && appVersionBadge) {
+            appVersionBadge.textContent = "v" + res.version;
+        }
+    }).catch(() => {});
+
+    // Silent background check after short delay
+    setTimeout(() => {
+        checkForUpdates(false);
+    }, 2000);
 }

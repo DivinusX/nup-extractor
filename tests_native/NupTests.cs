@@ -354,6 +354,33 @@ public class NupTests
         Assert.Empty(finalResult.Problems);
     }
 
+    [Fact]
+    public void Test_AppUpdateManager_VersionParsing()
+    {
+        var v105 = AppUpdateManager.ParseVersion("v1.0.5");
+        var v106 = AppUpdateManager.ParseVersion("1.0.6");
+        var v210 = AppUpdateManager.ParseVersion("v2.1.0-alpha");
+
+        Assert.Equal(new Version(1, 0, 5), v105);
+        Assert.Equal(new Version(1, 0, 6), v106);
+        Assert.Equal(new Version(2, 1, 0), v210);
+
+        Assert.True(v106 > v105);
+        Assert.True(v210 > v106);
+        Assert.False(v105 > v106);
+        Assert.False(v105 > AppUpdateManager.ParseVersion("1.0.5"));
+    }
+
+    [Fact]
+    public async Task Test_AppUpdateManager_CheckForUpdates_RunsWithoutCrashing()
+    {
+        var result = await AppUpdateManager.CheckForUpdatesAsync(CancellationToken.None);
+        Assert.NotNull(result);
+        Assert.Equal(AppUpdateManager.CurrentVersion, result.CurrentVersion);
+        // Either succeeded and found latest version or set friendly error message
+        Assert.True(!string.IsNullOrEmpty(result.LatestVersion) || !string.IsNullOrEmpty(result.Error));
+    }
+
     private class SyncProgress<T> : IProgress<T>
     {
         private readonly Action<T> _handler;

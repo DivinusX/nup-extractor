@@ -22,6 +22,7 @@ public partial class MainWindow : Window
 
     private CancellationTokenSource? _extractCts;
     private CancellationTokenSource? _verifyCts;
+    private CancellationTokenSource? _updateCts;
 
     public MainWindow()
     {
@@ -151,6 +152,22 @@ public partial class MainWindow : Window
                 case "open_folder":
                     string fPath = GetString(root, "path", "folderPath") ?? "";
                     NupEngine.OpenFolder(fPath);
+                    break;
+
+                case "get_app_info":
+                    SendIpcResponse(new { id, action = "app_info_result", version = AppUpdateManager.CurrentVersion });
+                    break;
+
+                case "check_update":
+                    await HandleCheckUpdateAsync(id, root);
+                    break;
+
+                case "start_update":
+                    await HandleStartUpdateAsync(id, root);
+                    break;
+
+                case "cancel_update":
+                    _updateCts?.Cancel();
                     break;
 
                 case "cancel_extract":
@@ -427,6 +444,79 @@ public partial class MainWindow : Window
             SendIpcResponse(new
             {
                 type = "verify_error",
+                error = ex.Message
+            });
+        }
+    }
+
+    private async Task HandleCheckUpdateAsync(string id, JsonElement root)
+    {
+        bool manual = GetBool(root, "manual") ?? false;
+        try
+        {
+            var res = await Task.Run(() => AppUpdateManager.CheckForUpdatesAsync());
+            SendIpcResponse(new
+            {
+                id,
+                action = "check_update_result",
+                success = string.IsNullOrEmpty(res.Error),
+                error = res.Error,
+                manual,
+                data = res
+            });
+        }
+        catch (Exception ex)
+        {
+            SendIpcResponse(new
+            {
+                id,
+                action = "check_update_result",
+                success = false,
+                manual,
+                error = ex.Message
+            });
+        }
+    }
+
+    private async Task HandleStartUpdateAsync(string id, JsonElement root)
+    {
+        string? downloadUrl = GetString(root, "downloadUrl", "download_url");
+        if (string.IsNullOrWhiteSpace(downloadUrl))
+        {
+            SendIpcResponse(new { type = "update_error", error = "No valid download URL provided for update." });
+            return;
+        }
+
+        _updateCts?.Cancel();
+        _updateCts = new CancellationTokenSource();
+        var token = _updateCts.Token;
+
+        var progress = new Progress<UpdateProgressInfo>(info =>
+        {
+            SendIpcResponse(new
+            {
+                type = "update_progress",
+                info
+            });
+        });
+
+        try
+        {
+            await Task.Run(() => AppUpdateManager.ApplyUpdateAsync(downloadUrl, progress, token), token);
+        }
+        catch (OperationCanceledException)
+        {
+            SendIpcResponse(new
+            {
+                type = "update_error",
+                error = "Update cancelled by user."
+            });
+        }
+        catch (Exception ex)
+        {
+            SendIpcResponse(new
+            {
+                type = "update_error",
                 error = ex.Message
             });
         }

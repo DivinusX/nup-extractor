@@ -181,6 +181,18 @@ body {
     box-shadow: 0 6px 20px rgba(0, 212, 255, 0.5);
 }
 
+.btn-ghost {
+    background: transparent;
+    color: var(--text-muted);
+    border-color: transparent;
+}
+
+.btn-ghost:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
 .btn-glow {
     position: relative;
     overflow: hidden;

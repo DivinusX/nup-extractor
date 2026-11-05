@@ -21,7 +21,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg?style=flat-square" alt="License"></a>
   <a href="https://dotnet.microsoft.com"><img src="https://img.shields.io/badge/.NET-10.0-purple.svg?style=flat-square" alt=".NET 10"></a>
   <a href="#"><img src="https://img.shields.io/badge/Platform-Windows%20x64-0078D6.svg?style=flat-square" alt="Platform"></a>
-  <a href="#"><img src="https://img.shields.io/badge/Tests-15%20Passing-success.svg?style=flat-square" alt="Tests"></a>
+  <a href="#"><img src="https://img.shields.io/badge/Tests-19%20Passing-success.svg?style=flat-square" alt="Tests"></a>
 </p>
 
 ---
@@ -79,6 +79,11 @@ Rather than relying on console scripts or heavy web runtimes, NUP Extractor is e
 - **🛡️ Integrity Verification**:
   - Validates Superblock structure and Table of Contents (TOC) SHA-256 hash.
   - Deep-verifies individual SHA-256 checksums across every file extent.
+- **🔄 In-Place Auto-Updater**:
+  - Automatic background checks on startup or on-demand via the **Updates** button.
+  - User controls: **Update Now**, **Remind Me Later**, or **Skip This Version**.
+  - High-speed streaming download with live MB/s progress telemetry.
+  - Seamless in-place replacement and automatic restart without leaving behind temporary files or modifying install directories.
 
 ---
 
