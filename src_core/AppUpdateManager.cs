@@ -176,6 +176,16 @@ public static class AppUpdateManager
 
     public static async Task ApplyUpdateAsync(string downloadUrl, IProgress<UpdateProgressInfo> progress, CancellationToken ct)
     {
+        // The in-place mechanism replaces the running Windows .exe by relaunching
+        // the downloaded binary with --update-replace. Linux builds ship as
+        // tarballs/AppImages managed outside the app, so applying is refused.
+        if (!OperatingSystem.IsWindows())
+        {
+            throw new PlatformNotSupportedException(
+                "Automatic in-place updates are only supported on Windows builds. " +
+                "Please download the latest Linux release from the GitHub releases page.");
+        }
+
         string currentExePath = Environment.ProcessPath ?? Process.GetCurrentProcess().MainModule?.FileName ?? "";
         if (string.IsNullOrEmpty(currentExePath) || !File.Exists(currentExePath))
             throw new InvalidOperationException("Could not determine current executable path for update.");
