@@ -8,7 +8,11 @@ namespace NupExtractorApp;
 
 public partial class App : Application
 {
-    public static string? InitialFilePath { get; set; }
+    public static string? InitialFilePath
+    {
+        get => StartupState.InitialFilePath;
+        set => StartupState.InitialFilePath = value;
+    }
 
     protected override void OnStartup(StartupEventArgs e)
     {
