@@ -20,8 +20,8 @@
   <a href="https://github.com/SPIN0ZAi/nup-extractor/releases/latest"><img src="https://img.shields.io/badge/Release-Latest-00d4ff.svg?style=flat-square" alt="Release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg?style=flat-square" alt="License"></a>
   <a href="https://dotnet.microsoft.com"><img src="https://img.shields.io/badge/.NET-10.0-purple.svg?style=flat-square" alt=".NET 10"></a>
-  <a href="#"><img src="https://img.shields.io/badge/Platform-Windows%20x64-0078D6.svg?style=flat-square" alt="Platform"></a>
-  <a href="#"><img src="https://img.shields.io/badge/Tests-19%20Passing-success.svg?style=flat-square" alt="Tests"></a>
+  <a href="#"><img src="https://img.shields.io/badge/Platform-Windows%20%2B%20Linux%20x64-0078D6.svg?style=flat-square" alt="Platform"></a>
+  <a href="#"><img src="https://img.shields.io/badge/Tests-23%20Passing-success.svg?style=flat-square" alt="Tests"></a>
 </p>
 
 ---
@@ -49,9 +49,9 @@
 
 ## ⚡ Overview
 
-**NUP Extractor** is a standalone 64-bit Windows GUI utility built to handle **NX Package (`.nup`)** containers—a modern clean-room specification designed by [a55uka](https://github.com/a55uka/nup) for archiving unencrypted Nintendo Switch (1 and 2) game dumps.
+**NUP Extractor** is a standalone 64-bit desktop GUI utility built to handle **NX Package (`.nup`)** containers—a modern clean-room specification designed by [a55uka](https://github.com/a55uka/nup) for archiving unencrypted Nintendo Switch (1 and 2) game dumps.
 
-Rather than relying on console scripts or heavy web runtimes, NUP Extractor is engineered as a **pure native Windows application (`WinExe`)** featuring:
+Rather than relying on console scripts or heavy web runtimes, NUP Extractor ships as **pure native applications on both platforms** (no Wine): a `WinExe` WPF + WebView2 shell on Windows and a Photino + WebKitGTK shell on Linux x64, both driving the same platform-neutral engine and IPC contract:
 - **Zero Command Prompt Window**: Launches directly into a sleek, hardware-accelerated desktop window.
 - **Zero UI Freezing ("Not Responding")**: Employs 64-bit memory-mapped file I/O (`MemoryMappedFile`) and asynchronous background workers (`Task.Run`), ensuring the UI stays completely fluid at 60+ FPS even when extracting 30GB game dumps.
 - **SIMD-Accelerated Streaming Decompression**: High-throughput Zstandard (`ZstdSharp`) pipeline with 128KB buffered writes.
@@ -75,7 +75,7 @@ Rather than relying on console scripts or heavy web runtimes, NUP Extractor is e
   - **Full Game Dump**: Reconstructs the complete game directory hierarchy.
   - **Package Mode**: Extracts only the selected package tab.
   - **Subtree Mode**: Extracts specific folders (e.g. only `romfs/` or `exefs/`).
-  - Native Windows File Explorer folder pickers with auto-open upon completion.
+  - Native OS folder pickers (Windows Explorer dialogs / GTK dialogs on Linux) with auto-open upon completion.
 - **🛡️ Integrity Verification**:
   - Validates Superblock structure and Table of Contents (TOC) SHA-256 hash.
   - Deep-verifies individual SHA-256 checksums across every file extent.
@@ -84,6 +84,7 @@ Rather than relying on console scripts or heavy web runtimes, NUP Extractor is e
   - User controls: **Update Now**, **Remind Me Later**, or **Skip This Version**.
   - High-speed streaming download with live MB/s progress telemetry.
   - Seamless in-place replacement and automatic restart without leaving behind temporary files or modifying install directories.
+  - On Linux builds, startup checks, release notes and version badges work identically; the in-place apply step is Windows-only, so grab the newest Linux binary from the Releases page.
 
 ---
 
@@ -96,6 +97,18 @@ Download the latest pre-compiled standalone executable from the [Releases](https
 2. Extract the ZIP anywhere (e.g. Desktop).
 3. Double-click **`NUP_Extractor.exe`** to run.
 
+### Linux x64 (native, no Wine)
+
+1. Download the **`NUP_Extractor-linux-x64`** single-file binary from the [Releases](https://github.com/SPIN0ZAi/nup-extractor/releases/latest) page (or build it yourself with `./build_linux.sh`).
+2. `chmod +x NUP_Extractor` and run it — the .NET runtime is embedded; the only system requirement is WebKitGTK 4.1 + GTK 3 (preinstalled on most desktop distros):
+
+```bash
+# Debian/Ubuntu
+sudo apt install libwebkit2gtk-4.1-0
+# Fedora/openSUSE
+sudo dnf install webkit2gtk4.1 gtk3
+```
+
 *(No .NET SDK or Python installation required—everything is self-contained!)*
 
 ---
@@ -103,7 +116,7 @@ Download the latest pre-compiled standalone executable from the [Releases](https
 ## 🛠️ Building from Source
 
 ### Prerequisites
-- Windows 10 / 11 (64-bit)
+- Windows 10 / 11 (64-bit) **or** Linux x64 (with WebKitGTK 4.1 + GTK 3)
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
 
 ### 1. Clone the Repository
@@ -137,6 +150,28 @@ dotnet publish src_native/NupExtractorApp.csproj `
 
 The resulting `NUP_Extractor.exe` will be generated in `dist_native/` (or the project root).
 
+### Building on Linux x64
+
+The same pipeline, natively — no Wine involved:
+```bash
+dotnet test NupExtractor.slnx     # all 23 tests run on Linux
+./build_linux.sh                  # tests + self-contained single-file publish → ./NUP_Extractor
+```
+
+Or run the .NET CLI command directly:
+```bash
+dotnet publish src_linux/NupExtractorLinux.csproj \
+  -c Release \
+  -r linux-x64 \
+  --self-contained \
+  -p:PublishSingleFile=true \
+  -p:IncludeNativeLibrariesForSelfExtract=true \
+  -p:EnableCompressionInSingleFile=true \
+  -o dist_linux
+```
+
+The resulting `./NUP_Extractor` is a standalone ELF64 binary with the .NET runtime embedded. The WPF project (`src_native`) still cross-compiles on Linux (`EnableWindowsTargeting`) so solution-wide CI works on either OS, but it only *runs* on Windows.
+
 ---
 
 ## 🧪 Automated Test Suite
@@ -160,6 +195,7 @@ The solution includes an extensive **xUnit** automated regression test suite (`t
 | `Test_Serialization_Contract_ProducesCamelCase` | Enforces camelCase JSON contract between C# backend and UI |
 | `Test_Extraction_ThrowsOnEmptyPath` | Validates defensive argument checking |
 | `Test_GetDirChildren_OutOfBoundsThrows` | Validates boundary verification on directory indices |
+| `Test_ShellIntegration_RoundTripsThroughRouter` | Drives get/toggle shell-integration actions through the shared IPC router |
 
 ---
 
@@ -168,7 +204,7 @@ The solution includes an extensive **xUnit** automated regression test suite (`t
 To maintain high engineering standards, all development follows a Kanban board and Git Flow:
 - **Git Flow Guide**: See [docs/WORKFLOW.md](docs/WORKFLOW.md) for branch naming, PR checklist, and release cycles.
 - **Kanban Board**: Tasks and bugs are tracked via [GitHub Projects](https://github.com/SPIN0ZAi/nup-extractor/projects).
-- **Automated CI**: Pull Requests targeting the `develop` branch are automatically built, packaged, and verified across all 19 unit tests before merging.
+- **Automated CI**: Pull Requests targeting the `develop` branch are automatically built, packaged, and verified across all 23 unit tests before merging.
 
 ---
 
@@ -176,15 +212,24 @@ To maintain high engineering standards, all development follows a Kanban board a
 
 ```
 nup-extractor/
-├── src_native/                    # C# .NET 10 Native Application
+├── src_core/                      # Platform-neutral .NET 10 library (runs on Windows & Linux)
 │   ├── NupFormat.cs               # Binary layout, records, and constants
 │   ├── NupReader.cs               # 64-bit MemoryMappedFile reader & stream decompressor
 │   ├── NupEngine.cs               # Core extraction, search, inspection, and verification engine
+│   ├── AppUpdateManager.cs        # GitHub Releases update manager
+│   ├── IPlatformShell.cs          # OS shell services contract (pickers, messaging, integration)
+│   ├── IpcRouter.cs               # Shared in-process IPC message dispatcher
+│   └── StartupState.cs            # Launch arguments shared with the router
+├── src_native/                    # Windows desktop shell (WPF + WebView2, WinExe)
 │   ├── MainWindow.xaml            # Native WPF Window hosting WebView2
-│   └── MainWindow.xaml.cs         # Direct in-process IPC message dispatcher
-├── tests_native/                  # xUnit automated test suite (15 tests)
+│   └── MainWindow.xaml.cs         # WebView2 shell adapter for IPlatformShell
+├── src_linux/                     # Linux desktop shell (Photino + WebKitGTK, native ELF)
+│   ├── Program.cs                 # CLI contract (--extract-here, --extract-to-folder, ...)
+│   ├── PhotinoShell.cs            # WebKitGTK shell adapter for IPlatformShell
+│   └── ChromeShim.cs              # window.chrome.webview bridge for WebKit
+├── tests_native/                  # xUnit automated test suite (23 tests, runs on both OSes)
 │   └── NupTests.cs                # Test specifications & test cases
-├── static/                        # Embedded UI Assets (HTML5, CSS3, JS)
+├── static/                        # Embedded UI Assets (HTML5, CSS3, JS) — served by both shells
 │   ├── index.html                 # Joy-Con themed responsive UI layout
 │   ├── styles.css                 # Glassmorphic dark styling & animations
 │   └── app.js                     # IPC event handling & reactive UI controller
@@ -199,11 +244,22 @@ nup-extractor/
 ├── release/                       # Pre-packaged release bundles
 │   ├── NUP_Extractor-v1.0.0-windows-x64.zip
 │   └── SHA256SUMS.txt
-├── build_native.bat               # 1-Click CI Build & Test script
+├── build_native.bat               # 1-Click CI Build & Test script (Windows)
+├── build_linux.sh                 # 1-Click CI Build & Test script (Linux x64)
 ├── NupExtractor.slnx              # Modern .NET solution file
 ├── LICENSE                        # MIT License
 └── README.md                      # Project documentation
 ```
+
+---
+
+## 🐧 Linux Port — Known Limitations
+
+- **Auto-update apply is Windows-only.** The in-place `.exe` swap + relaunch mechanism has no Linux equivalent; `start_update` reports a clear error and users download new releases manually. Update *checking* works on both platforms.
+- **Desktop integration is best-effort.** The Windows Explorer context menu (HKCU ProgId) is replaced by a freedesktop `.desktop` entry + `xdg-mime` default on Linux. How "Extract Here" surfaces depends on the file manager (Dolphin/Nautilus render `.desktop` actions differently).
+- **Rendering engine differs by shell:** WebView2 (Chromium) on Windows vs WebKitGTK on Linux. The UI is identical HTML/CSS/JS, but WebKit may render subtle CSS/animation differences.
+- **System WebKitGTK required** on Linux (the .NET runtime itself is embedded in the single-file binary).
+- `grim` is installed for Wayland screenshots but KWin (Plasma) does not expose `wlr-screencopy`; use `spectacle -b -n -o shot.png` on this compositor. `ydotool` requires the `input` group + `ydotoold` daemon (root) to synthesize clicks.
 
 ---
 
