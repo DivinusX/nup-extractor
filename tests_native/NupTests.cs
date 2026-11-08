@@ -431,12 +431,29 @@ public class NupTests
     }
 
     [Fact]
-    public void Test_ShellIntegration_StatusCheckDoesNotThrow()
+    public void Test_ShellIntegration_RoundTripsThroughRouter()
     {
-        // Calling IsRegistered() should safely query HKCU without throwing
-        bool isRegistered = ShellIntegration.IsRegistered();
-        // Just verify it returns a boolean (either true or false depending on current user registry state)
-        Assert.True(isRegistered == true || isRegistered == false);
+        // Platform-neutral replacement for the old HKCU probe: exercises the
+        // shell-integration actions exactly as both desktop shells do.
+        var shell = new FakeShell();
+        var router = new IpcRouter(shell);
+
+        router.HandleMessageAsync("{\"id\":\"s1\",\"action\":\"get_shell_integration_status\"}").GetAwaiter().GetResult();
+        var status = JsonDocument.Parse(shell.LastMessage!).RootElement;
+        Assert.Equal("shell_integration_status_result", status.GetProperty("action").GetString());
+        Assert.True(status.GetProperty("success").GetBoolean());
+        Assert.False(status.GetProperty("registered").GetBoolean());
+
+        router.HandleMessageAsync("{\"id\":\"s2\",\"action\":\"toggle_shell_integration\",\"enable\":true}").GetAwaiter().GetResult();
+        var enabled = JsonDocument.Parse(shell.LastMessage!).RootElement;
+        Assert.Equal("toggle_shell_integration_result", enabled.GetProperty("action").GetString());
+        Assert.True(enabled.GetProperty("success").GetBoolean());
+        Assert.True(enabled.GetProperty("registered").GetBoolean());
+
+        router.HandleMessageAsync("{\"id\":\"s3\",\"action\":\"toggle_shell_integration\",\"enable\":false}").GetAwaiter().GetResult();
+        var disabled = JsonDocument.Parse(shell.LastMessage!).RootElement;
+        Assert.True(disabled.GetProperty("success").GetBoolean());
+        Assert.False(disabled.GetProperty("registered").GetBoolean());
     }
 
     [Fact]
@@ -478,5 +495,23 @@ public class NupTests
         private readonly Action<T> _handler;
         public SyncProgress(Action<T> handler) => _handler = handler;
         public void Report(T value) => _handler(value);
+    }
+
+    /// <summary>Records router responses and emulates the shell-integration toggle.</summary>
+    private sealed class FakeShell : IPlatformShell
+    {
+        public string? LastMessage { get; private set; }
+        public string PlatformId => "test";
+
+        public Task<string?> BrowseFileAsync() => Task.FromResult<string?>(null);
+        public Task<string?> BrowseFolderAsync() => Task.FromResult<string?>(null);
+        public Task<string?> SaveFileAsync(string suggestedName) => Task.FromResult<string?>(null);
+        public void SendWebMessage(string json) => LastMessage = json;
+
+        public bool RegisterShellIntegration() { Registered = true; return true; }
+        public bool UnregisterShellIntegration() { Registered = false; return true; }
+        public bool IsShellIntegrationRegistered() => Registered;
+
+        private bool Registered;
     }
 }

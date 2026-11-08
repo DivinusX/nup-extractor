@@ -637,7 +637,10 @@ public static class NupEngine
             }
 
             string fullPath = Path.GetFullPath(destinationDir);
-            string root = Path.GetPathRoot(fullPath) ?? "";
+            // Windows keeps the historic volume-root lookup. Unix: DriveInfo
+            // accepts any path and resolves the mount actually containing it —
+            // GetPathRoot would always collapse to "/" and report the wrong volume.
+            string root = OperatingSystem.IsWindows() ? (Path.GetPathRoot(fullPath) ?? "") : fullPath;
             var drive = new DriveInfo(root);
 
             ulong freeBytes = (ulong)drive.AvailableFreeSpace;
