@@ -10,10 +10,12 @@ bin/
 obj/
 dist/
 dist_native/
+dist_linux/
 dist_release/
 publish_bin/
 release/
 *.exe
+/NUP_Extractor
 
 # Visual Studio / IDE
 .vs/

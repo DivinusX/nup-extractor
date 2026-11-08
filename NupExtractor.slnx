@@ -2,6 +2,12 @@
   <Folder Name="/src_native/">
     <Project Path="src_native/NupExtractorApp.csproj" />
   </Folder>
+  <Folder Name="/src_linux/">
+    <Project Path="src_linux/NupExtractorLinux.csproj" />
+  </Folder>
+  <Folder Name="/src_core/">
+    <Project Path="src_core/NupExtractorCore.csproj" />
+  </Folder>
   <Folder Name="/tests_native/">
     <Project Path="tests_native/NupExtractorApp.Tests.csproj" />
   </Folder>
