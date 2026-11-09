@@ -1,0 +1,74 @@
+name: Sync upstream (SPIN0ZAi/nup-extractor)
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"   # cada 6 horas
+  workflow_dispatch:         # botón manual en la pestaña Actions
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: upstream-sync
+  cancel-in-progress: false
+
+env:
+  UPSTREAM_REPO: SPIN0ZAi/nup-extractor
+  UPSTREAM_BRANCH: main
+  BASE_BRANCH: main
+  SYNC_BRANCH: upstream-sync
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BASE_BRANCH }}
+          fetch-depth: 0
+
+      - name: Fetch upstream
+        run: |
+          git remote add upstream "https://github.com/${UPSTREAM_REPO}.git"
+          git fetch upstream "${UPSTREAM_BRANCH}"
+          NEW=$(git rev-list --count "HEAD..upstream/${UPSTREAM_BRANCH}")
+          echo "new=$NEW" >> "$GITHUB_ENV"
+          echo "Commits nuevos en upstream: $NEW"
+          git log --oneline "HEAD..upstream/${UPSTREAM_BRANCH}" | tee /tmp/newcommits.txt
+
+      - name: Merge upstream into sync branch
+        if: env.new != '0'
+        env:
+          GH_TOKEN: ${{ secrets.SYNC_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$SYNC_BRANCH"
+          UP_SHA=$(git rev-parse --short "upstream/${UPSTREAM_BRANCH}")
+
+          if git merge --no-ff --no-edit "upstream/${UPSTREAM_BRANCH}" \
+               -m "Merge upstream ${UPSTREAM_REPO}@${UP_SHA}"; then
+            git push --force origin "$SYNC_BRANCH"
+            BODY=$(printf 'Merge automático de **%s** (`%s`) sin conflictos.\n\nCommits nuevos:\n```\n%s\n```\n\n⚠️ Revisa que los cambios de Windows (`src_native/`) tengan su equivalente en Linux (`src_linux/` / `src_core/`) antes de hacer merge.' \
+                    "$UPSTREAM_REPO" "$UP_SHA" "$(cat /tmp/newcommits.txt)")
+            if gh pr view "$SYNC_BRANCH" --json state -q .state 2>/dev/null | grep -q OPEN; then
+              gh pr edit "$SYNC_BRANCH" --body "$BODY"
+            else
+              gh pr create --base "$BASE_BRANCH" --head "$SYNC_BRANCH" \
+                --title "Sync upstream ${UPSTREAM_REPO}" --body "$BODY"
+            fi
+          else
+            CONFLICTS=$(git diff --name-only --diff-filter=U)
+            git merge --abort
+            TITLE="Upstream sync: conflictos de merge"
+            BODY=$(printf 'El merge automático de **%s** (`%s`) tiene conflictos en:\n```\n%s\n```\nCommits nuevos:\n```\n%s\n```\n\nResolver localmente:\n```bash\ngit remote add upstream https://github.com/%s.git  # solo la primera vez\ngit fetch upstream\ngit checkout main\ngit merge upstream/%s\n# resolver conflictos, luego:\ngit commit && git push\n```' \
+                    "$UPSTREAM_REPO" "$UP_SHA" "$CONFLICTS" "$(cat /tmp/newcommits.txt)" "$UPSTREAM_REPO" "$UPSTREAM_BRANCH")
+            NUM=$(gh issue list --state open --search "in:title \"$TITLE\"" --json number -q '.[0].number')
+            if [ -n "$NUM" ]; then
+              gh issue comment "$NUM" --body "$BODY"
+            else
+              gh issue create --title "$TITLE" --body "$BODY"
+            fi
+          fi
